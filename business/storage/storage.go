@@ -1,87 +1,101 @@
-/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-This file is in charge of uploading/downloading files into different storages
-
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 package storage
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 
-	"gopkg.in/yaml.v3"
+	"github.com/graymeta/stow"
+	"github.com/graymeta/stow/local"
+	"github.com/graymeta/stow/s3"
+	"github.com/graymeta/stow/sftp"
+
+	log "github.com/sirupsen/logrus"
 )
 
-type Storage interface {
-	Name() string
-	Get(name string) ([]byte, error)
-	Put(name string, data []byte) error
+type Storage struct {
+	name      string
+	kind      string
+	container string
+	cfg       stow.ConfigMap
 }
 
-type StorageItem struct {
-	Type string            `yaml:"type" json:"type"`
-	Cfg  map[string]string `yaml:"config" json:"config"`
-}
-
-type StorageMap struct {
-	Map map[string]StorageItem `yaml:"map" json:"map"`
-}
-
-type StorageMapOption func(*StorageMap) error
-
-func WithYAMLData(data []byte) StorageMapOption {
-	return func(m *StorageMap) error {
-		return yaml.Unmarshal(data, m)
+func newStorage(name string, ci ConfigItem) (Storage, error) {
+	s := Storage{
+		name: name,
+		cfg:  stow.ConfigMap{},
+		kind: ci.Type,
 	}
-}
-
-func WithJSONData(data []byte) StorageMapOption {
-	return func(m *StorageMap) error {
-		return json.Unmarshal(data, m)
-	}
-}
-
-func NewStorageMap(opts ...StorageMapOption) (*StorageMap, error) {
-	m := &StorageMap{
-		Map: map[string]StorageItem{},
-	}
-	for _, opt := range opts {
-		err := opt(m)
-		if err != nil {
-			return nil, err
+	switch ci.Type {
+	case local.Kind:
+		s.container = ci.Cfg["path"]
+		s.cfg["path"] = ci.Cfg["path"]
+		if _, err := os.Stat(s.container); os.IsNotExist(err) {
+			err := os.Mkdir(s.container, 0700)
+			if err != nil {
+				return Storage{}, err
+			}
 		}
-	}
-	return m, nil
-}
-
-func (m *StorageMap) Add(name string, si StorageItem) {
-	m.Map[name] = si
-}
-
-func (m *StorageMap) Get(name string) (Storage, error) {
-	s, ok := m.Map[name]
-	if !ok {
-		return nil, fmt.Errorf("storage %s does not exist", name)
-	}
-	switch s.Type {
-	case "filesystem":
-		return NewFilesystem(name, s)
+	case s3.Kind:
+		s.container = ci.Cfg["bucket"]
+		s.cfg[s3.ConfigAccessKeyID] = ci.Cfg["accesskey"]
+		s.cfg[s3.ConfigSecretKey] = ci.Cfg["secretkey"]
+		s.cfg[s3.ConfigRegion] = ci.Cfg["region"]
+	case sftp.Kind:
+		s.container = ci.Cfg["directory"]
+		s.cfg[sftp.ConfigHost] = ci.Cfg["host"]
+		s.cfg[sftp.ConfigUsername] = ci.Cfg["username"]
+		s.cfg[sftp.ConfigPassword] = ci.Cfg["password"]
 	default:
-		return nil, fmt.Errorf("unrecognized type of storage %s", s.Type)
+		return Storage{}, fmt.Errorf("unrecognized type of storage %s", ci.Type)
 	}
+	return s, nil
 }
 
-func (m *StorageMap) Size() int {
-	return len(m.Map)
+func (s Storage) Name() string {
+	return s.name
 }
 
-func (m *StorageMap) Array() []Storage {
-	rr := []Storage{}
-	for name := range m.Map {
-		ss, err := m.Get(name)
-		if err == nil {
-			rr = append(rr, ss)
-		}
+func (s Storage) Get(name string) ([]byte, error) {
+	loc, err := stow.Dial(s.kind, s.cfg)
+	if err != nil {
+		return nil, err
 	}
-	return rr
+	defer loc.Close()
+	c, err := loc.Container(s.container)
+	if err != nil {
+		log.Errorf("failed to get container %s", s.container)
+		return nil, err
+	}
+	i, err := c.Item(name)
+	if err != nil {
+		return []byte{}, err
+	}
+	r, err := i.Open()
+	if err != nil {
+		return []byte{}, err
+	}
+	defer r.Close()
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return []byte{}, err
+	}
+	return b, nil
+}
+
+func (s Storage) Put(filename string, data []byte) error {
+	loc, err := stow.Dial(s.kind, s.cfg)
+	if err != nil {
+		return err
+	}
+	defer loc.Close()
+	c, err := loc.Container(s.container)
+	if err != nil {
+		log.Errorf("failed to get container %s", s.container)
+		return err
+	}
+	r := bytes.NewReader(data)
+	_, err = c.Put(filename, r, int64(len(data)), nil)
+	return err
 }
