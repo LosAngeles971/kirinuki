@@ -37,5 +37,5 @@ func init() {
 	uploadCmd.PersistentFlags().StringVar(&name, "name", "", "name of file")
 	uploadCmd.PersistentFlags().StringVar(&filename, "filename", "", "output filename")
 	uploadCmd.PersistentFlags().BoolVar(&overwrite, "overwrite", false, "overwrite file if exists")
-	rootCmd.AddCommand(downloadCmd)
+	rootCmd.AddCommand(uploadCmd)
 }

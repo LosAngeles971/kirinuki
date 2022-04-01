@@ -96,6 +96,10 @@ func (s *Session) login() error {
 	return err
 }
 
+func (s *Session) kill() {
+	s.toc = nil
+}
+
 func (s *Session) logout() error {
 	if !s.isOpen() {
 		log.Errorf("session with email %s is already closed", s.email)

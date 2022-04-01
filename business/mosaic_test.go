@@ -21,7 +21,7 @@ func TestMosaic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sm.Add("test", storage.StorageItem{
+	sm.Add("test", storage.ConfigItem{
 		Type: "filesystem",
 		Cfg: map[string]string{
 			"path": os.TempDir(),

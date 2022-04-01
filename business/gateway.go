@@ -2,12 +2,12 @@ package business
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
 type Gateway struct {
-	keeptoc bool
 	session *Session
 }
 
@@ -17,7 +17,6 @@ func New(email string, password string, scratch bool, m *storage.StorageMap) (Ga
 		return Gateway{}, err
 	}
 	return Gateway{
-		keeptoc: false,
 		session: s,
 	}, nil
 }
@@ -50,6 +49,26 @@ func New(email string, password string, scratch bool, m *storage.StorageMap) (Ga
 // 	}
 // 	return toc.storeTOC(CurrentSession)
 // }
+
+func (g Gateway) Find(pattern string) ([]Kirinuki, error) {
+	err := g.session.login()
+	if err != nil {
+		return nil, err
+	}
+	toc, err := g.session.getTOC()
+	if err != nil {
+		return nil, err
+	}
+	rr := []Kirinuki{}
+	for _, k := range toc.Kfiles {
+		match, _ := regexp.MatchString(pattern, k.Name)
+		if match {
+			rr = append(rr, *k)
+		}
+	}
+	g.session.kill()
+	return rr, nil
+}
 
 func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
 	err := g.session.login()
@@ -93,18 +112,6 @@ func (g Gateway) Download(name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !g.keeptoc {
-		err = g.session.logout()
-		if err != nil {
-			return data, err
-		}
-	}
+	g.session.kill()
 	return data, nil
-}
-
-func (g Gateway) Logout() error {
-	if  g.session.isOpen() {
-		return g.session.logout()
-	}
-	return nil
 }

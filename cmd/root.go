@@ -36,5 +36,5 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&scratch, "scratch", false, "scratch your library")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug")
 	rootCmd.PersistentFlags().StringVar(&storageMap, "storage", "", "storage file config")
-	rootCmd.MarkFlagRequired("email")
+	rootCmd.MarkPersistentFlagRequired("email")
 }

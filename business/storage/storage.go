@@ -1,3 +1,8 @@
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+single storage management by means of stow
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 package storage
 
 import (
@@ -14,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Storage allows to get/put files to a generic storage supported by stow
 type Storage struct {
 	name      string
 	kind      string
@@ -21,6 +27,8 @@ type Storage struct {
 	cfg       stow.ConfigMap
 }
 
+// newStorage creates a Storage struct starting from a configuration item, the latter bears configurations 
+// depending on the specific target (filesystem, s3, ...)
 func newStorage(name string, ci ConfigItem) (Storage, error) {
 	s := Storage{
 		name: name,
@@ -53,10 +61,12 @@ func newStorage(name string, ci ConfigItem) (Storage, error) {
 	return s, nil
 }
 
+// Name returns the (arbitrary) name of the specific storage target
 func (s Storage) Name() string {
 	return s.name
 }
 
+// Get returns a file (if exist) from the storage target
 func (s Storage) Get(name string) ([]byte, error) {
 	loc, err := stow.Dial(s.kind, s.cfg)
 	if err != nil {
@@ -84,6 +94,7 @@ func (s Storage) Get(name string) ([]byte, error) {
 	return b, nil
 }
 
+// Put saves a file to the storage target
 func (s Storage) Put(filename string, data []byte) error {
 	loc, err := stow.Dial(s.kind, s.cfg)
 	if err != nil {

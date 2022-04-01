@@ -1,6 +1,6 @@
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-This file is in charge of uploading/downloading files into different storages
+management of a plurality of storage targets
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 package storage
@@ -8,25 +8,30 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
+// ConfigItem contains configurations for a specific storage target
 type ConfigItem struct {
 	Type string            `yaml:"type" json:"type"`
 	Cfg  map[string]string `yaml:"config" json:"config"`
 }
 
+// ConfigMap contains configurations for a plurality of storage targets
 type ConfigMap struct {
 	Map map[string]ConfigItem `yaml:"map" json:"map"`
 }
 
+// StorageMap is a manager of a plurality of storage targets
 type StorageMap struct {
 	targets []Storage
 }
 
 type StorageMapOption func(*StorageMap) error
 
+// WithYAMLData populates a StorageMap from a YAML data
 func WithYAMLData(data []byte) StorageMapOption {
 	return func(m *StorageMap) error {
 		cm := &ConfigMap{}
@@ -44,6 +49,7 @@ func WithYAMLData(data []byte) StorageMapOption {
 	}
 }
 
+// WithJSONData populates a StorageMap from a JSON data
 func WithJSONData(data []byte) StorageMapOption {
 	return func(m *StorageMap) error {
 		cm := &ConfigMap{}
@@ -61,6 +67,7 @@ func WithJSONData(data []byte) StorageMapOption {
 	}
 }
 
+// NewStorageMap creates a new StorageMap (empty or populated depending on the options)
 func NewStorageMap(opts ...StorageMapOption) (*StorageMap, error) {
 	m := &StorageMap{
 		targets: []Storage{},
@@ -98,4 +105,15 @@ func (m *StorageMap) Size() int {
 
 func (m *StorageMap) Array() []Storage {
 	return m.targets
+}
+
+func Init(filename string) ([]byte, error) {
+	cm := ConfigMap{
+		Map: map[string]ConfigItem{},
+	}
+	if strings.HasSuffix(filename, ".yml") || strings.HasSuffix(filename, ".yaml") {
+		return yaml.Marshal(&cm)
+	} else {
+		return json.Marshal(&cm)
+	}
 }

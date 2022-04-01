@@ -1,8 +1,6 @@
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Testing splitting file features
-
-This testing session DOES NOT need external data, nether to interact with the system
+testing file splitting features
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 package business
