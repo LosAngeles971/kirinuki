@@ -1,0 +1,10 @@
+{
+    "map": {
+        "local": {
+            "type": "local",
+            "config": {
+                "path": "./"
+            }
+        }
+    }
+}

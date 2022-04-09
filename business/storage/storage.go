@@ -1,8 +1,24 @@
-/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-single storage management by means of stow
-
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+/*
+ * Created on Sat Apr 09 2022
+ * Author @LosAngeles971
+ *
+ * The MIT License (MIT)
+ * Copyright (c) 2022 @LosAngeles971
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+ * TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package storage
 
 import (
@@ -19,7 +35,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Storage allows to get/put files to a generic storage supported by stow
+// Storage struct represents a generic storage supported by "stow"
 type Storage struct {
 	name      string
 	kind      string
@@ -27,8 +43,7 @@ type Storage struct {
 	cfg       stow.ConfigMap
 }
 
-// newStorage creates a Storage struct starting from a configuration item, the latter bears configurations 
-// depending on the specific target (filesystem, s3, ...)
+// newStorage creates a new Storage object for a given specific storage type
 func newStorage(name string, ci ConfigItem) (Storage, error) {
 	s := Storage{
 		name: name,
@@ -61,7 +76,6 @@ func newStorage(name string, ci ConfigItem) (Storage, error) {
 	return s, nil
 }
 
-// Name returns the (arbitrary) name of the specific storage target
 func (s Storage) Name() string {
 	return s.name
 }

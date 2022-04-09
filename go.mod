@@ -1,6 +1,6 @@
 module github.com/LosAngeles971/kirinuki
 
-go 1.15
+go 1.16
 
 require (
 	github.com/graymeta/stow v0.2.7
