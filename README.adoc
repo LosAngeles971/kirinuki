@@ -83,7 +83,7 @@ TBD
 [source,bash]
 ----
 losangeles971@losangeles971 MINGW64 ~/myhome/black/kirinuki (main)
-$ ./kirinuki.exe --help
+$ kirinuki.exe --help
 Kirinuki.
 
 Usage:
