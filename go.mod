@@ -1,14 +1,29 @@
 module github.com/LosAngeles971/kirinuki
 
-go 1.16
+go 1.17
 
 require (
 	github.com/graymeta/stow v0.2.7
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.1.1
-	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/net v0.0.0-20220325170049-de3da57026de // indirect
-	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886 // indirect
+	github.com/spf13/cobra v1.4.0
+	golang.org/x/crypto v0.0.0-20220408190544-5352b0902921
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+)
+
+require (
+	github.com/aws/aws-sdk-go v1.43.36 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/kr/fs v0.1.0 // indirect
+	github.com/kr/pretty v0.1.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/sftp v1.13.4 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.7.1 // indirect
+	golang.org/x/net v0.0.0-20220407224826-aac1ed45d8e3 // indirect
+	golang.org/x/sys v0.0.0-20220408201424-a24fb2fb8a0f // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
