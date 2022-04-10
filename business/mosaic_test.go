@@ -22,28 +22,50 @@
 package business
 
 import (
-	"os"
+	_ "embed"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
-func TestMosaic(t *testing.T) {
-	sm, err := storage.NewStorageMap()
+type k_data_test struct {
+	name     string
+	data     []byte
+	checksum string
+}
+
+//go:embed test_file1.png
+var test_file1 []byte
+
+var k_data_tests []k_data_test = []k_data_test{
+	{
+		name: "test1",
+		data: test_file1,
+	},
+}
+
+// TestMosaic verifies upload and download of Kirinuki files
+func TestMosaicWithoutEncryption(t *testing.T) {
+	sm, err := storage.NewStorageMap(storage.WithTemp())
 	if err != nil {
 		t.Fatal(err)
 	}
-	sm.Add("test", storage.ConfigItem{
-		Type: "filesystem",
-		Cfg: map[string]string{
-			"path": os.TempDir(),
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	ee := newEnigma()
 	for _, tt := range k_data_tests {
-		k1, err := NewKirinuki(WithKirinukiData(tt.name, tt.data))
+		tt.checksum = ee.hash(tt.data) 
+		k1 := NewKirinuki(tt.name)
+		if k1.Encryption {
+			t.Fatalf("encryption should be off [%v]", k1.Encryption)
+		}
+		k2 := NewKirinuki(tt.name, WithRandomkey())
+		if !k2.Encryption {
+			t.Fatalf("encryption should be on [%v]", k2.Encryption)
+		}
+		err := k1.addData(tt.data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = k2.addData(tt.data)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -51,17 +73,31 @@ func TestMosaic(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		data, err := getKirinuki(k1, sm.Array())
+		err = putKiriuki(k2, sm.Array())
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(tt.data) != len(data) {
-			t.Fatalf("wrong size, expected %v not %v", len(tt.data), len(data))
+		d1, err := getKirinuki(k1, sm.Array())
+		if err != nil {
+			t.Fatal(err)
 		}
-		for i := range tt.data {
-			if tt.data[i] != data[i] {
-				t.Fatal("rebuild corrupted")
-			}
+		d2, err := getKirinuki(k2, sm.Array())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tt.data) != len(d1) {
+			t.Fatalf("[no encryption] wrong size, expected %v not %v", len(tt.data), len(d1))
+		}
+		if len(tt.data) != len(d2) {
+			t.Fatalf("[encryption] wrong size, expected %v not %v", len(tt.data), len(d2))
+		}
+		ck1 := ee.hash(d1)
+		ck2 := ee.hash(d2)
+		if tt.checksum != ck1 {
+			t.Fatalf("[no encryption] rebuild failed, expected hash [%v] not [%v]", tt.checksum, ck1)
+		}
+		if tt.checksum != ck2 {
+			t.Fatalf("[encryption] rebuild failed, expected hash [%v] not [%v]", tt.checksum, ck2)
 		}
 	}
 }

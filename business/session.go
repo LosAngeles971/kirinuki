@@ -22,6 +22,7 @@
 package business
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
@@ -29,6 +30,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Session includes the mandatory set of information to work with Kirinuki files
 type Session struct {
 	email        string
 	password     string
@@ -79,12 +81,9 @@ func (s *Session) GetPassword() string {
 	return s.password
 }
 
-func (s *Session) getTOCSkeleton() (*Kirinuki, error) {
-	k, err := NewKirinuki()
-	if err != nil {
-		return nil, err
-	}
-	k.Name = NewEnigma().hash([]byte(s.email))
+// getTableOfContent returns the empty Kirinuki file for an existend or new TOC
+func (s *Session) getTableOfContent() (*Kirinuki, error) {
+	k := NewKirinukiTOC(s.email, s.password)
 	k.Chunks = []*chunk{}
 	for index := 0; index < s.chunksForTOC; index++ {
 		ch, err := newChunk(index, withChunkName(newNaming().getNameForTOCChunk(s, index)))
@@ -100,7 +99,7 @@ func (s *Session) login() error {
 	if s.isOpen() {
 		return nil
 	}
-	k, err := s.getTOCSkeleton()
+	k, err := s.getTableOfContent()
 	if err != nil {
 		return err
 	}
@@ -112,18 +111,15 @@ func (s *Session) login() error {
 	return err
 }
 
-func (s *Session) kill() {
-	s.toc = nil
-}
-
+// logout saves the current open TOC on cloud and closes the session
 func (s *Session) logout() error {
 	if !s.isOpen() {
-		log.Errorf("session with email %s is already closed", s.email)
+		log.Errorf("session %s is already closed", s.email)
+		return nil
 	}
-	k := Kirinuki{}
-	k.Name = NewEnigma().hash([]byte(s.email))
+	k := NewKirinukiTOC(s.email, s.password)
 	k.Replicas = s.storage.Size()
-	tocdata, err := s.toc.serialize()
+	tocdata, err := json.Marshal(s.toc)
 	if err != nil {
 		return err
 	}
@@ -139,7 +135,7 @@ func (s *Session) logout() error {
 		}
 		k.Chunks = append(k.Chunks, ch)
 	}
-	return putKiriuki(&k, s.storage.Array())
+	return putKiriuki(k, s.storage.Array())
 }
 
 func (s *Session) getTOC() (*TOC, error) {

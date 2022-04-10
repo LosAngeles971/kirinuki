@@ -25,6 +25,24 @@ import (
 	"errors"
 )
 
+// getChunksNumberForKFile returns the number of chunks depending on the size of the source file
+func getChunksNumberForKFile(file []byte) int {
+	size := len(file)
+	if size < 1000 {
+		return 3
+	}
+	if size < 10000 {
+		return 5
+	}
+	if size < 100000 {
+		return 7
+	}
+	if size < 1000000 {
+		return 9
+	}
+	return 11
+}
+
 // extractChunk extracts a subset from an array of bytes starting from the given index
 func extractChunk(data []byte, startindex int, size int) []byte {
 	chunk := []byte{}

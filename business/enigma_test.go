@@ -31,19 +31,55 @@ const (
 )
 
 func TestHash(t *testing.T) {
-	e := NewEnigma()
+	e := newEnigma()
 	h := e.hash([]byte(enigma_phrase))
 	t.Log(h)
 }
 
-func TestEncryption(t *testing.T) {
-	e := NewEnigma(WithMainkey(enigma_email, enigma_phrase))
+func TestEncryptionWithMainKey(t *testing.T) {
+	e := newEnigma(withMainkey(enigma_email, enigma_phrase))
 	plaintext := []byte(enigma_phrase)
 	encrypted, err := e.encrypt(plaintext)
 	if err != nil {
 		t.Fatal(err)
 	}
 	decrypted, err := e.decrypt(encrypted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text2 := string(decrypted)
+	if string(plaintext) != text2 {
+		t.FailNow()
+	}
+}
+
+func TestEncryptionWithRandomkey(t *testing.T) {
+	e := newEnigma(withRandomkey())
+	plaintext := []byte(enigma_phrase)
+	encrypted, err := e.encrypt(plaintext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decrypted, err := e.decrypt(encrypted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text2 := string(decrypted)
+	if string(plaintext) != text2 {
+		t.FailNow()
+	}
+}
+
+func TestEncryptionWithEncodedkey(t *testing.T) {
+	e1 := newEnigma(withRandomkey())
+	key := e1.getEncodedKey()
+	plaintext := []byte(enigma_phrase)
+	encrypted, err := e1.encrypt(plaintext)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e2 := newEnigma(withEncodedkey(key))
+	decrypted, err := e2.decrypt(encrypted)
 	if err != nil {
 		t.Fatal(err)
 	}

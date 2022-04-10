@@ -1,0 +1,6 @@
+= 切り抜き - Kirinuki
+
+image::.resources/kirinuki.png[]
+
+Kirinuki is Golang library and CLI for storing small files over a plurality of storage targets, which aims to keep the content of files secret and realiable.
+

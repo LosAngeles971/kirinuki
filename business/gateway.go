@@ -2,7 +2,6 @@ package business
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
@@ -21,69 +20,39 @@ func New(email string, password string, scratch bool, m *storage.StorageMap) (Ga
 	}, nil
 }
 
-// func (g Gateway) UploadData(filename string, data []byte) error {
-// 	key := GenerateKey()
-// 	file, err := Encrypt(data, key)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	toc, err := loadTOC(CurrentSession)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if toc.Exist(filename) {
-// 		return errors.New("File already present: " + filename)
-// 	}
-// 	kfile, err := CreateKirinukiFile(filename, file)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	kfile.Symmetrickey = key
-// 	err = PutKiriukiFile(&kfile)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	ok := toc.Add(&kfile)
-// 	if !ok {
-// 		return errors.New("bug error: file already present in TOC")
-// 	}
-// 	return toc.storeTOC(CurrentSession)
-// }
+func (g Gateway) Login() error {
+	return g.session.login()
+}
+
+func (g Gateway) Logout() error {
+	return g.session.logout()
+}
 
 func (g Gateway) Find(pattern string) ([]Kirinuki, error) {
-	err := g.session.login()
-	if err != nil {
-		return nil, err
+	if !g.session.isOpen() {
+		return nil, fmt.Errorf("session %s is not open", g.session.email)
 	}
 	toc, err := g.session.getTOC()
 	if err != nil {
 		return nil, err
 	}
-	rr := []Kirinuki{}
-	for _, k := range toc.Kfiles {
-		match, _ := regexp.MatchString(pattern, k.Name)
-		if match {
-			rr = append(rr, *k)
-		}
-	}
-	g.session.kill()
-	return rr, nil
+	return toc.find(pattern), nil
 }
 
 func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
-	err := g.session.login()
-	if err != nil {
-		return err
+	if !g.session.isOpen() {
+		return fmt.Errorf("session %s is not open", g.session.email)
 	}
 	toc, err := g.session.getTOC()
 	if err != nil {
 		return err
 	}
-	if toc.Find(name) && !overwrite {
+	if toc.exist(name) && !overwrite {
 		return fmt.Errorf("file with name %s already exists", name)
 	}
 	// overwrite in any case
-	k, err := NewKirinuki(WithKirinukiData(name, data))
+	k := NewKirinuki(name)
+	err = k.addData(data)
 	if err != nil {
 		return err
 	}
@@ -91,27 +60,24 @@ func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
 	if err != nil {
 		return err
 	}
-	toc.Add(k)
-	return g.session.logout()
+	ok := toc.add(k)
+	if !ok {
+		return fmt.Errorf("failed to add %s to TOC", name)
+	}
+	return nil
 }
 
 func (g Gateway) Download(name string) ([]byte, error) {
-	err := g.session.login()
-	if err != nil {
-		return nil, err
+	if !g.session.isOpen() {
+		return nil, fmt.Errorf("session %s is not open", g.session.email)
 	}
 	toc, err := g.session.getTOC()
 	if err != nil {
 		return nil, err
 	}
-	k, ok := toc.Get(name)
+	k, ok := toc.get(name)
 	if !ok {
 		return nil, fmt.Errorf("file %s not present", name)
 	}
-	data, err := getKirinuki(k, g.session.storage.Array())
-	if err != nil {
-		return nil, err
-	}
-	g.session.kill()
-	return data, nil
+	return getKirinuki(k, g.session.storage.Array())
 }

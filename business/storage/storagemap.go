@@ -24,9 +24,14 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	TEMP_STORAGE = "temp"
 )
 
 // ConfigItem contains configurations for a specific storage target
@@ -46,6 +51,8 @@ type StorageMap struct {
 }
 
 type StorageMapOption func(*StorageMap) error
+
+
 
 // WithYAMLData populates a StorageMap from a YAML data
 func WithYAMLData(data []byte) StorageMapOption {
@@ -79,6 +86,19 @@ func WithJSONData(data []byte) StorageMapOption {
 				return err
 			}
 		}
+		return nil
+	}
+}
+
+// WithTemp add local temporary directory as a storage target
+func WithTemp() StorageMapOption {
+	return func(m *StorageMap) error {
+		m.Add(TEMP_STORAGE, ConfigItem{
+			Type: "local",
+			Cfg: map[string]string{
+				"path": os.TempDir(),
+			},
+		})
 		return nil
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Created on Sat Apr 09 2022
+ * Created on Sun Apr 10 2022
  * Author @LosAngeles971
  *
  * The MIT License (MIT)
@@ -22,57 +22,56 @@
 package business
 
 import (
-	"testing"
+	"fmt"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
-func TestTOC(t *testing.T) {
-	sm, err := storage.NewStorageMap(storage.WithTemp())
-	if err != nil {
-		t.Fatal(err)
+type chunk struct {
+	Name      string   `json:"name"`
+	Real_size int      `json:"real_size"`
+	Index     int      `json:"int"`
+	Targets   []string `json:"targets"`
+	data      []byte
+}
+
+type chunkOption func(*chunk) error
+
+func withChunkData(data []byte) chunkOption {
+	return func(c *chunk) error {
+		if len(data) < 1 {
+			return fmt.Errorf("wrong size of input data %v for a chunk", len(data))
+		}
+		c.Real_size = len(data)
+		c.data = data
+		return nil
 	}
-	session, err := NewSession(test_email, test_password, true, WithStorage(sm))
-	if err != nil {
-		t.Fatalf("failed to create a session due to %v", err)
+}
+
+func withChunkName(name string) chunkOption {
+	return func(c *chunk) error {
+		c.Name = name
+		return nil
 	}
-	err = session.login()
-	if err != nil {
-		t.Fatalf("failed to open a session due to %v", err)
-	}
-	toc, err := session.getTOC()
-	if err != nil {
-		t.Fatalf("failed to get toc from session due to %v", err)
-	}
-	for _, tt := range k_data_tests {
-		k := NewKirinuki(tt.name)
-		err := k.addData(tt.data)
+}
+
+func newChunk(index int, opts ...chunkOption) (*chunk, error) {
+	c := &chunk{}
+	c.Targets = []string{}
+	c.Name = newNaming().getNameForChunk()
+	c.Index = index
+	for _, opt := range opts {
+		err := opt(c)
 		if err != nil {
-			t.Fatal(err)
-		}
-		ok := toc.add(k)
-		if !ok {
-			t.Fatal("File not added")
-		}
-		if !toc.exist(tt.name) {
-			t.Fatalf("toc does not contain kirinuki %s", tt.name)
+			return nil, err
 		}
 	}
-	err = session.logout()
-	if err != nil {
-		t.Fatalf("cannot logout [%v]", err)
-	}
-	err = session.login()
-	if err != nil {
-		t.Fatalf("cannot login  [%v]", err)
-	}
-	toc2, err := session.getTOC()
-	if err != nil {
-		t.Fatalf("failed to get toc (2) from session due to %v", err)
-	}
-	for _, tt := range k_data_tests {
-		if !toc2.exist(tt.name) {
-			t.Fatalf("reloaded toc does not contain kirinuki %s", tt.name)
-		}
+	return c, nil
+}
+
+// setTargets assigns an array of storage targets to the chunk
+func (c *chunk) setTargets(tt []storage.Storage) {
+	for i := range tt {
+		c.Targets = append(c.Targets, tt[i].Name())
 	}
 }

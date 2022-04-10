@@ -26,6 +26,7 @@ import (
 	"testing"
 )
 
+// TestLocal verifies put/get files using local storage target
 func TestLocal(t *testing.T) {
 	ll, err := newStorage("test", ConfigItem{
 		Type: "local",

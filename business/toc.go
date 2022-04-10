@@ -23,9 +23,11 @@ package business
 
 import (
 	"encoding/json"
+	"regexp"
 	"time"
 )
 
+// TOC handles the table of content of the Kirinuki files
 type TOC struct {
     Lastupdate	int64				`json:"lastupdate"`
     Kfiles		[]*Kirinuki 		`json:"kfiles"`
@@ -33,6 +35,7 @@ type TOC struct {
 
 type TOCOption func(*TOC) error
 
+// TOCWithData is used to load an existent table of content
 func TOCWithData(data []byte) TOCOption {
 	return func(t *TOC) error {
 		return json.Unmarshal(data, &t)
@@ -53,7 +56,8 @@ func newTOC(opts ...TOCOption) (*TOC, error) {
 	return t, nil
 }
 
-func (t TOC) Find(name string) bool {
+// Exist returns true if the Kirinuki file with the given name exists
+func (t TOC) exist(name string) bool {
 	for _, k := range t.Kfiles {
 		if name == k.Name {
 			return true
@@ -62,7 +66,9 @@ func (t TOC) Find(name string) bool {
 	return false
 }
 
-func (t TOC) Get(name string) (*Kirinuki, bool) {
+// Get returns the Kirinuki file with the given name and true if the file exists
+// This method returns the Kirinuki file without the data
+func (t TOC) get(name string) (*Kirinuki, bool) {
 	for _, k := range t.Kfiles {
 		if name == k.Name {
 			return k, true
@@ -71,14 +77,21 @@ func (t TOC) Get(name string) (*Kirinuki, bool) {
 	return nil, false
 }
 
-func (t *TOC) Add(k *Kirinuki) bool {
-	if t.Find(k.Name) {
+func (t *TOC) add(k *Kirinuki) bool {
+	if t.exist(k.Name) {
 		return false
 	}
 	t.Kfiles = append(t.Kfiles, k)
 	return true
 }
 
-func (t TOC) serialize() ([]byte, error) {
-	return json.Marshal(t)
+func (t TOC) find(pattern string) []Kirinuki {
+	rr := []Kirinuki{}
+	for _, k := range t.Kfiles {
+		match, _ := regexp.MatchString(pattern, k.Name)
+		if match {
+			rr = append(rr, *k)
+		}
+	}
+	return rr
 }

@@ -23,7 +23,6 @@ package storage
 
 import (
 	_ "embed"
-	"os"
 	"testing"
 )
 
@@ -33,6 +32,7 @@ var yCfgFile string
 //go:embed test.json
 var jCfgFile string
 
+// TestLoad just verifies the capability of loading storage map from a confifuration file
 func TestLoad(t *testing.T) {
 	m1, err := NewStorageMap(WithYAMLData([]byte(yCfgFile)))
 	if err != nil {
@@ -53,22 +53,13 @@ func TestLoad(t *testing.T) {
 	}
 }
 
-func TestAdd(t *testing.T) {
-	sm, err := NewStorageMap()
+func TestTempStorage(t *testing.T) {
+	sm, err := NewStorageMap(WithTemp())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sm.Size() != 0 {
-		t.Fatal("storage array must be empty")
-	}
-	sm.Add("test", ConfigItem{
-		Type: "local",
-		Cfg: map[string]string{
-			"path": os.TempDir(),
-		},
-	})
 	if sm.Size() != 1 {
-		t.Fatalf("wrong storage array size %v", sm.Size())
+		t.Fatalf("storage array should have the %s storage", TEMP_STORAGE)
 	}
 	ss := sm.Array()
 	if len(ss) != 1 {

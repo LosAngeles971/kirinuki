@@ -28,52 +28,45 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
-	rr "math/rand"
-	"time"
 )
 
 type Enigma struct {
 	letterRunes []rune
-	keyString   string
+	keyString   [32]byte
 	prefix      string
 }
 
 type EnigmaOption func(*Enigma)
 
-func WithKeystring(keystring string) EnigmaOption {
+func withMainkey(email string, password string) EnigmaOption {
 	return func(e *Enigma) {
-		e.keyString = keystring
+		e.keyString = sha256.Sum256([]byte(email + password + e.prefix))
 	}
 }
 
-func WithMainkey(email string, password string) EnigmaOption {
+func withRandomkey() EnigmaOption {
 	return func(e *Enigma) {
-		e.keyString = e.hash([]byte(email + password + e.prefix))
+		key := make([]byte, 32)
+		if _, err := io.ReadFull(rand.Reader, key); err != nil {
+			panic(err.Error())
+		}
 	}
 }
 
-func WithPrefix(prefix string) EnigmaOption {
+func withEncodedkey(key string) EnigmaOption {
 	return func(e *Enigma) {
-		e.prefix = prefix
+		key, _ := hex.DecodeString(key)
+		copy(e.keyString[:], key[:32])
 	}
 }
 
-func NewEnigma(opts ...EnigmaOption) *Enigma {
+func newEnigma(opts ...EnigmaOption) *Enigma {
 	e := &Enigma{
 		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
 		prefix:      "Kirinuki",
-		keyString:   "",
 	}
 	for _, opt := range opts {
 		opt(e)
-	}
-	if len(e.keyString) == 0 {
-		b := make([]rune, 32)
-		rr.Seed(time.Now().UnixNano())
-		for i := range b {
-			b[i] = e.letterRunes[rr.Intn(len(e.letterRunes))]
-		}
-		e.keyString = string(b)
 	}
 	return e
 }
@@ -84,8 +77,7 @@ func (e *Enigma) hash(data []byte) string {
 }
 
 func (e *Enigma) encrypt(plaintext []byte) ([]byte, error) {
-	key, _ := hex.DecodeString(e.keyString)
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(e.keyString[:])
 	if err != nil {
 		return []byte{}, err
 	}
@@ -102,9 +94,8 @@ func (e *Enigma) encrypt(plaintext []byte) ([]byte, error) {
 }
 
 func (e *Enigma) decrypt(enc []byte) ([]byte, error) {
-	key, _ := hex.DecodeString(e.keyString)
 	//Create a new Cipher Block from the key
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(e.keyString[:])
 	if err != nil {
 		return []byte{}, err
 	}
@@ -123,4 +114,8 @@ func (e *Enigma) decrypt(enc []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 	return plaintext, nil
+}
+
+func (e *Enigma) getEncodedKey() string {
+	return hex.EncodeToString(e.keyString[:])
 }
