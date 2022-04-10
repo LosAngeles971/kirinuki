@@ -36,7 +36,6 @@ Available Commands:
   download    download Kirinuki file
   find        find files into the storage using regex matching
   help        Help about any command
-  storage     storage manager
   upload      upload Kirinuki file
 
 Flags:

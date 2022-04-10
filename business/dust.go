@@ -1,18 +1,13 @@
 /*
- * Created on Fri Apr 08 2022
+ * Created on Sun Apr 10 2022
  * Author @LosAngeles971
  *
- * The MIT License (MIT)
+ * This software is licensed under GNU General Public License v2.0
  * Copyright (c) 2022 @LosAngeles971
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
- * and associated documentation files (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all copies or substantial
- * portions of the Software.
+ * The GNU GPL is the most widely used free software license and has a strong copyleft requirement.
+ * When distributing derived works, the source code of the work must be made available under the same license.
+ * There are multiple variants of the GNU GPL, each with different requirements.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
  * TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL

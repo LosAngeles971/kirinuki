@@ -1,0 +1,40 @@
+name: Go
+
+on:
+  push:
+    branches:
+    - "*"
+  pull_request:
+    branches:
+    - "*"
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+
+    - name: Build for Linux/64
+      run: env GOOS=linux GOARCH=amd64 go build -v -o release/kirinuki ./...
+
+    - name: Build for Windows/64
+      run: env GOOS=windows GOARCH=amd64 go build -v -o release/kirinuki.exe ./... 
+
+    - name: Build for Darwin/64
+      run: env GOOS=darwin GOARCH=amd64 go build -v -o release/kirinuki.mac ./... 
+
+    - name: Build for Linux/arm
+      run: env GOOS=linux GOARCH=arm go build -v -o release/kirinuki.arm ./... 
+
+    - name: Build for Linux/arm64
+      run: env GOOS=linux GOARCH=arm64 go build -v -o release/kirinuki.arm64 ./... 
+
+    - name: Test
+      run: release/kirinuki
+      
