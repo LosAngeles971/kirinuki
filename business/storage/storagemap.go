@@ -47,8 +47,6 @@ type StorageMap struct {
 
 type StorageMapOption func(*StorageMap) error
 
-
-
 // WithYAMLData populates a StorageMap from a YAML data
 func WithYAMLData(data []byte) StorageMapOption {
 	return func(m *StorageMap) error {
@@ -127,7 +125,7 @@ func (m *StorageMap) Get(name string) (Storage, error) {
 			return ss, nil
 		}
 	}
-	return Storage{}, fmt.Errorf("storage %s not found", name)
+	return nil, fmt.Errorf("storage %s not found", name)
 }
 
 func (m *StorageMap) Size() int {
