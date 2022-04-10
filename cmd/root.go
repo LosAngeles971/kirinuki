@@ -32,8 +32,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&email, "email", "", "email is your username")
-	rootCmd.PersistentFlags().BoolVar(&scratch, "scratch", false, "scratch your library")
+	rootCmd.PersistentFlags().StringVar(&email, "email", "", "email")
+	rootCmd.PersistentFlags().BoolVar(&scratch, "scratch", false, "scratch your table of content")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug")
 	rootCmd.PersistentFlags().StringVar(&storageMap, "storage", "", "storage file config")
 	rootCmd.MarkPersistentFlagRequired("email")

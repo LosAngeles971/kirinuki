@@ -2,5 +2,62 @@
 
 image::.resources/kirinuki.png[]
 
-Kirinuki is Golang library and CLI for storing small files over a plurality of storage targets, which aims to keep the content of files secret and realiable.
+Kirinuki is a Golang library for storing small files over a plurality of storage targets, which aims to keep the content of files secret and realiable. Kirinuki provides a CLI too.
+
+== How it handles storage
+
+TBD
+
+== How it handles encryption
+
+TBD
+
+== How it handles upload and download
+
+When Kirinuki upload a file to the virtual storage, the data is encrypted and splitted into a number of chunks. Subsequently, Kirinuki uploads every single chunk to all possible storage targets. This ways is really hard (pratically impossible) to rebuild the original file from the scattered chunks of data, without Kirinuki and the master key. 
+
+== Using Kirinuki as a Golang library
+
+TBD
+
+== Using Kirinuki as a CLI
+
+[source,bash]
+----
+losangeles971@losangeles971 MINGW64 ~/myhome/black/kirinuki (main)
+$ ./kirinuki.exe --help
+Kirinuki.
+
+Usage:
+  kirinuki [flags]
+  kirinuki [command]
+
+Available Commands:
+  download    download Kirinuki file
+  find        find files into the storage using regex matching
+  help        Help about any command
+  storage     storage manager
+  upload      upload Kirinuki file
+
+Flags:
+      --debug            enable debug
+      --email string     email
+  -h, --help             help for kirinuki
+      --scratch          scratch your table of content
+      --storage string   storage file config
+
+Use "kirinuki [command] --help" for more information about a command.
+----
+
+== External libraries
+
+Kirinuki requires few external libraries, among these the main one is https://github.com/graymeta/stow[STOW].
+Indeed, Kirinuki completely relies on STOW for handling storage.
+
+Kirinuki also needs https://github.com/sirupsen/logrus[LOGRUS] for logging and https://github.com/spf13/cobra[COBRA] for implementing the CLI.
+
+
+
+
+
 
