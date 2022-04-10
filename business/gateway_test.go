@@ -17,12 +17,15 @@
 package business
 
 import (
+	"crypto/rand"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
-func TestGatewayPutGet(t *testing.T) {
+func TestEndurance(t *testing.T) {
 	sm, err := storage.NewStorageMap(storage.WithTemp())
 	if err != nil {
 		t.Fatal(err)
@@ -31,20 +34,60 @@ func TestGatewayPutGet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tot := 50
 	ee := newEnigma()
-	for _, tt := range k_data_tests {
-		tt.checksum = ee.hash(tt.data)
-		err = g.Upload(tt.name, tt.data, true)
-		if err != nil {
-			t.Errorf("failed upload %s due to %v", tt.name, err)
+	for i :=0; i < tot; i++ {
+		size := 50000
+		data := make([]byte, size)
+		if _, err := io.ReadFull(rand.Reader, data); err != nil {
+			panic(err.Error())
 		}
-		data, err := g.Download(tt.name)
+		checksum := ee.hash(data)
+		name := fmt.Sprintf("test_file%v", i)
+		err = g.Login()
 		if err != nil {
-			t.Errorf("failed download %s due to %v", tt.name, err)
+			t.Fatal(err)
 		}
-		ck := ee.hash(data)
-		if tt.checksum != ck {
-			t.Fatalf("rebuild failed, expected hash [%v] not [%v]", tt.checksum, ck)
+		err = g.Upload(name, data, true)
+		if err != nil {
+			t.Errorf("failed upload %s due to %v", name, err)
+		}
+		err = g.Logout()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = g.Login()
+		if err != nil {
+			t.Fatal(err)
+		}
+		back, err := g.Download(name)
+		if err != nil {
+			t.Errorf("failed download %s due to %v", name, err)
+		}
+		back_checksum := ee.hash(back)
+		if checksum != back_checksum {
+			t.Fatalf("rebuild failed, expected hash [%v] not [%v]", checksum, back_checksum)
+		}
+	}
+	err = g.Login()
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := g.Size()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != tot {
+		t.Errorf("expected %v Kirinuki files not %v", tot, n)
+	}
+	for i :=0; i < tot; i++ {
+		name := fmt.Sprintf("test_file%v", i)
+		ok, err := g.Exist(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Errorf("expected one found entry for %v", name)
 		}
 	}
 }

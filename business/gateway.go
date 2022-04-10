@@ -55,6 +55,28 @@ func (g Gateway) Find(pattern string) ([]Kirinuki, error) {
 	return toc.find(pattern), nil
 }
 
+func (g Gateway) Exist(name string) (bool, error) {
+	if !g.session.isOpen() {
+		return false, fmt.Errorf("session %s is not open", g.session.email)
+	}
+	toc, err := g.session.getTOC()
+	if err != nil {
+		return false, err
+	}
+	return toc.exist(name), nil
+}
+
+func (g Gateway) Size() (int, error) {
+	if !g.session.isOpen() {
+		return 0, fmt.Errorf("session %s is not open", g.session.email)
+	}
+	toc, err := g.session.getTOC()
+	if err != nil {
+		return 0, err
+	}
+	return len(toc.Kfiles), nil
+}
+
 func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
 	if !g.session.isOpen() {
 		return fmt.Errorf("session %s is not open", g.session.email)

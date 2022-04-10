@@ -4,15 +4,73 @@ image::.resources/kirinuki.png[]
 
 Kirinuki is a Golang library for storing small files over a plurality of storage targets, which aims to keep the content of files secret and realiable. Kirinuki provides a CLI too.
 
-== How it handles storage
+== Storage management
+
+Kirinuki supports three kind of storage by means of the STOW project: local filesystem, S3 and SFTP.
+
+Kirinuki requires a storage configuration file including a plurality of storage targets of different types, like the following example.
+
+[source,json]
+----
+{
+    "map": {
+        "local1": {
+            "type": "local",
+            "config": {
+                "path": "/path1"
+            }
+        },
+        "local2": {
+            "type": "local",
+            "config": {
+                "path": "/path2"
+            }
+        },
+        "mys3_1": {
+          "type": "s3",
+          "config": {
+            "bucket": "b1",
+            "accesskey": "key",
+            "secretkey": "secret",
+            "regione": "est"
+          }
+        },
+        "mys3_2": {
+          "type": "s3",
+          "config": {
+            "bucket": "b2",
+            "accesskey": "key",
+            "secretkey": "secret",
+            "regione": "ovest"
+          }
+        },
+        "mysftp_1": {
+          "type": "sftp",
+          "config": {
+            "directory": "mydir",
+            "host": "host1",
+            "username": "user",
+            "password": "secret"
+          }
+        },
+        "mysftp_2": {
+          "type": "sftp",
+          "config": {
+            "directory": "mydir",
+            "host": "host2",
+            "username": "user",
+            "password": "secret"
+          }
+        }
+    }
+}
+----
+
+== Encryption
 
 TBD
 
-== How it handles encryption
-
-TBD
-
-== How it handles upload and download
+== Upload and download of files
 
 When Kirinuki upload a file to the virtual storage, the data is encrypted and splitted into a number of chunks. Subsequently, Kirinuki uploads every single chunk to all possible storage targets. This ways is really hard (pratically impossible) to rebuild the original file from the scattered chunks of data, without Kirinuki and the master key. 
 
