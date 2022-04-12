@@ -42,18 +42,11 @@ func WithStorage(m *storage.StorageMap) SessionOption {
 	}
 }
 
-func NewSession(email string, password string, scratch bool, opts ...SessionOption) (*Session, error) {
+func NewSession(email string, password string, opts ...SessionOption) (*Session, error) {
 	s := &Session{
 		email:        email,
 		chunksForTOC: 3,
 		password:     password,
-	}
-	if scratch {
-		var err error
-		s.toc, err = newTOC()
-		if err != nil {
-			return nil, err
-		}
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -74,6 +67,15 @@ func (s *Session) GetEmail() string {
 
 func (s *Session) GetPassword() string {
 	return s.password
+}
+
+func (s *Session) createTableOfContent () error {
+	var err error
+	s.toc, err = newTOC()
+	if err != nil {
+		return err
+	}
+	return s.logout()
 }
 
 // getTableOfContent returns the empty Kirinuki file for an existend or new TOC

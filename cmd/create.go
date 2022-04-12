@@ -14,37 +14,36 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
+package cmd
 
 import (
-	"testing"
+	log "github.com/sirupsen/logrus"
 
-	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business"
+	"github.com/spf13/cobra"
 )
 
-const (
-	test_email    = "losangeles971@gmail.com"
-	test_password = "losangeles971@gmail.com"
-)
-
-func TestBasic(t *testing.T) {
-	sm, err := storage.NewStorageMap(storage.WithTemp())
-	if err != nil {
-		t.Fatal(err)
-	}
-	s, err := NewSession(test_email, test_password, WithStorage(sm))
-	if err != nil {
-		t.Fatalf("failed to create session from scratch, %v", err)
-	}
-	err = s.createTableOfContent()
-	if err != nil {
-		t.Fatalf("failed to create new toc %v", err)
-	}
-	err = s.login()
-	if err != nil {
-		t.Fatalf("failed to login to an already open session, %v", err)
-	}
-	if !s.isOpen() {
-		t.Fatal("session from scratch must be already open")
-	}
+var createCmd = &cobra.Command{
+	Use:   "create",
+	Short: "create a new table of content",
+	Long: `create a new table of content.
+Usage:
+	kirinuki create`,
+	Run: func(cmd *cobra.Command, args []string) {
+		g, err := business.New(email, askPassword(), getStorageMap())
+		if err != nil {
+			log.Fatalf("failed to create Gateway due to %v", err)
+		}
+		err = g.CreateTableOfContent()
+		if err != nil {
+			log.Fatalf("failed to create new table of content due to %v", err)
+		}
+		log.Infof("table of content successfully created for %s", email)
+	},
 }
+
+func init() {
+	rootCmd.AddCommand(createCmd)
+}
+
+

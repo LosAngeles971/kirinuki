@@ -32,7 +32,7 @@ Kirinuki requires a storage configuration file including a plurality of storage 
             "bucket": "b1",
             "accesskey": "key",
             "secretkey": "secret",
-            "regione": "est"
+            "region": "est"
           }
         },
         "mys3_2": {
@@ -41,7 +41,7 @@ Kirinuki requires a storage configuration file including a plurality of storage 
             "bucket": "b2",
             "accesskey": "key",
             "secretkey": "secret",
-            "regione": "ovest"
+            "region": "ovest"
           }
         },
         "mysftp_1": {

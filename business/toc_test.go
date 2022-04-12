@@ -27,9 +27,13 @@ func TestTOC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	session, err := NewSession(test_email, test_password, true, WithStorage(sm))
+	session, err := NewSession(test_email, test_password, WithStorage(sm))
 	if err != nil {
 		t.Fatalf("failed to create a session due to %v", err)
+	}
+	err = session.createTableOfContent()
+	if err != nil {
+		t.Fatalf("failed to create new table of content %v", err)
 	}
 	err = session.login()
 	if err != nil {

@@ -30,7 +30,11 @@ func TestEndurance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := New(test_email, test_password, true, sm)
+	g, err := New(test_email, test_password, sm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = g.CreateTableOfContent()
 	if err != nil {
 		t.Fatal(err)
 	}

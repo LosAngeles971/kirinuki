@@ -30,9 +30,13 @@ var findCmd = &cobra.Command{
 Usage:
 	kirinuki find --name <regex pattern>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g, err := business.New(email, askPassword(), scratch, getStorageMap())
+		g, err := business.New(email, askPassword(), getStorageMap())
 		if err != nil {
-			log.Fatalf("failed to create Gateway due to %v", err)
+			log.Fatalf("failed to create Gateway [%v]", err)
+		}
+		err = g.Login()
+		if err != nil {
+			log.Fatalf("failed to login [%v]", err)
 		}
 		rr, err := g.Find(name)
 		if err != nil {

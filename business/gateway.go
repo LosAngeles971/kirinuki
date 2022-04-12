@@ -26,8 +26,8 @@ type Gateway struct {
 	session *Session
 }
 
-func New(email string, password string, scratch bool, m *storage.StorageMap) (Gateway, error) {
-	s, err := NewSession(email, password, scratch, WithStorage(m))
+func New(email string, password string, m *storage.StorageMap) (Gateway, error) {
+	s, err := NewSession(email, password, WithStorage(m))
 	if err != nil {
 		return Gateway{}, err
 	}
@@ -36,12 +36,31 @@ func New(email string, password string, scratch bool, m *storage.StorageMap) (Ga
 	}, nil
 }
 
+func (g Gateway) CreateTableOfContent() error {
+	return g.session.createTableOfContent()
+}
+
 func (g Gateway) Login() error {
 	return g.session.login()
 }
 
 func (g Gateway) Logout() error {
 	return g.session.logout()
+}
+
+func (g Gateway) Get(name string) (*Kirinuki, error) {
+	if !g.session.isOpen() {
+		return nil, fmt.Errorf("session %s is not open", g.session.email)
+	}
+	toc, err := g.session.getTOC()
+	if err != nil {
+		return nil, err
+	}
+	k, ok := toc.get(name)
+	if !ok {
+		return nil, fmt.Errorf("file %s is not present", name)
+	}
+	return k, nil
 }
 
 func (g Gateway) Find(pattern string) ([]Kirinuki, error) {

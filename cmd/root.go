@@ -24,7 +24,6 @@ import (
 var name string
 var filename string
 var email string
-var scratch bool
 var overwrite bool
 var debug bool
 var storageMap string
@@ -49,7 +48,6 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&email, "email", "", "email")
-	rootCmd.PersistentFlags().BoolVar(&scratch, "scratch", false, "scratch your table of content")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug")
 	rootCmd.PersistentFlags().StringVar(&storageMap, "storage", "", "storage file config")
 	rootCmd.MarkPersistentFlagRequired("email")

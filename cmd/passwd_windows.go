@@ -25,13 +25,13 @@ This issue is not directly fixable and really not an issue with Go. If you switc
 import (
     "os"
     "syscall"
-    "golang.org/x/crypto/ssh/terminal"
+    "golang.org/x/term"
 	"log"
 )
 
 func askPassword() string {
 	log.Println("Enter your Kirinuki passphrase")
-	data, err := terminal.ReadPassword(int(syscall.Stdin))
+	data, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		log.Panic(err)
 		os.Exit(1)

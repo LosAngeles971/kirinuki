@@ -32,7 +32,7 @@ var downloadCmd = &cobra.Command{
 Usage:
 	kirinuki download --email <email> --name <name> --filename <filename>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g, err := business.New(email, askPassword(), scratch, getStorageMap())
+		g, err := business.New(email, askPassword(), getStorageMap())
 		if err != nil {
 			log.Fatalf("failed to create Gateway due to %v", err)
 		}
