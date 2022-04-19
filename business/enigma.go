@@ -25,13 +25,24 @@ import (
 	"io"
 )
 
+const (
+	key_size = 32
+)
+
 type Enigma struct {
-	letterRunes []rune
-	keyString   [32]byte
+	keyString   [key_size]byte
 	prefix      string
 }
 
 type EnigmaOption func(*Enigma)
+
+func getRndBytes(size int) []byte {
+	key := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
+		panic(err.Error())
+	}
+	return key
+}
 
 func withMainkey(email string, password string) EnigmaOption {
 	return func(e *Enigma) {
@@ -41,23 +52,19 @@ func withMainkey(email string, password string) EnigmaOption {
 
 func withRandomkey() EnigmaOption {
 	return func(e *Enigma) {
-		key := make([]byte, 32)
-		if _, err := io.ReadFull(rand.Reader, key); err != nil {
-			panic(err.Error())
-		}
+		e.keyString = sha256.Sum256(getRndBytes(key_size))
 	}
 }
 
 func withEncodedkey(key string) EnigmaOption {
 	return func(e *Enigma) {
 		key, _ := hex.DecodeString(key)
-		copy(e.keyString[:], key[:32])
+		copy(e.keyString[:], key[:key_size])
 	}
 }
 
 func newEnigma(opts ...EnigmaOption) *Enigma {
 	e := &Enigma{
-		letterRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
 		prefix:      "Kirinuki",
 	}
 	for _, opt := range opts {

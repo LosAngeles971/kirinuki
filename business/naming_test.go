@@ -17,13 +17,27 @@
 package business
 
 import (
+	"strings"
 	"testing"
 )
 
-func TestChunkName(t *testing.T) {
+func TestNames(t *testing.T) {
 	n := newNaming()
 	name := n.getNameForChunk()
 	if len(name) != n.chunk_name_size {
-		t.FailNow()
+		t.Fatalf("expected length %v not %v", n.chunk_name_size, len(name))
+	}
+	if strings.Contains(name, "/") {
+		t.Fatal("name for chunk cannot contain the slash")
+	}
+	s, err := NewSession(test_email, test_password)
+	if err != nil {
+		t.Fatalf("session failed %v", err)
+	}
+	for i := 0; i < s.chunksForTOC; i++ {
+		name := n.getNameForTOCChunk(s, i)
+		if strings.Contains(name, "/") {
+			t.Fatal("name for chunk cannot contain the slash")
+		}
 	}
 }

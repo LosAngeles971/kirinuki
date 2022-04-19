@@ -21,43 +21,35 @@ import (
 	"testing"
 )
 
-//go:embed test.yml
-var yCfgFile string
+//go:embed sftp.json
+var sftpFile []byte
 
-//go:embed test.json
-var jCfgFile string
+//go:embed minio.json
+var minioFile []byte
 
-// TestLoad just verifies the capability of loading storage map from a confifuration file
-func TestLoad(t *testing.T) {
-	m1, err := NewStorageMap(WithYAMLData([]byte(yCfgFile)))
+func doTest(sName string, sFile []byte, t *testing.T) {
+	sm, err := NewStorageMap(WithJSONData(sFile))
 	if err != nil {
 		t.Fatal(err)
 	}
-	m2, err := NewStorageMap(WithJSONData([]byte(jCfgFile)))
+	s, err := sm.Get(sName)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range []*StorageMap{m1, m2,} {
-		_, err =  m.Get("local")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if m.Size() != 1 {
-			t.Fatalf("not expected size of %v", m.Size())
-		}
+	err = s.Put("testfile", sftpFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Get("testfile")
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestTempStorage(t *testing.T) {
-	sm, err := NewStorageMap(WithTemp())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sm.Size() != 1 {
-		t.Fatalf("storage array should have the %s storage", TEMP_STORAGE)
-	}
-	ss := sm.Array()
-	if len(ss) != 1 {
-		t.Fatalf("wrong array size %v", len(ss))
-	}
+func TestSFTP(t *testing.T) {
+	doTest("sftp", sftpFile, t)
+}
+
+func TestMinio(t *testing.T) {
+	doTest("minio", minioFile, t)
 }

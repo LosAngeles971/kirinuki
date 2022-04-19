@@ -17,13 +17,21 @@
 package business
 
 import (
+	_ "embed"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
+//go:embed storage/minio.json
+var minio []byte
+
+func getStorage() (*storage.StorageMap, error) {
+	return storage.NewStorageMap(storage.WithJSONData(minio))
+}
+
 func TestTOC(t *testing.T) {
-	sm, err := storage.NewStorageMap(storage.WithTemp())
+	sm, err := getStorage()
 	if err != nil {
 		t.Fatal(err)
 	}

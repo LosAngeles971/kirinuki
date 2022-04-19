@@ -42,9 +42,15 @@ func newStowStorage(name string, ci ConfigItem) (Storage, error) {
 		s.cfg[s3.ConfigAccessKeyID] = ci.Cfg["accesskey"]
 		s.cfg[s3.ConfigSecretKey] = ci.Cfg["secretkey"]
 		s.cfg[s3.ConfigRegion] = ci.Cfg["region"]
+		s.cfg[s3.ConfigDisableSSL] = ci.Cfg["disable_ssl"]
+		if len(ci.Cfg["endpoint"]) > 0 {
+			s.cfg[s3.ConfigEndpoint] = ci.Cfg["endpoint"]
+		}
 	case sftp.Kind:
 		s.container = ci.Cfg["directory"]
+		s.cfg[sftp.ConfigBasePath] = ci.Cfg["base_path"]
 		s.cfg[sftp.ConfigHost] = ci.Cfg["host"]
+		s.cfg[sftp.ConfigPort] = ci.Cfg["port"]
 		s.cfg[sftp.ConfigUsername] = ci.Cfg["username"]
 		s.cfg[sftp.ConfigPassword] = ci.Cfg["password"]
 	default:

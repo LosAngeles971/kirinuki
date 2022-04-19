@@ -1,0 +1,15 @@
+{
+    "map": {
+        "minio": {
+            "type": "s3",
+            "config": {
+                "bucket": "testminio",
+                "region": "do-not-care",
+                "accesskey": "minioadmin",
+                "secretkey": "minioadmin",
+                "endpoint": "http://localhost:9000",
+                "disable_ssl": "true"
+            }
+        }
+    }
+}

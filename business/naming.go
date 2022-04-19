@@ -17,21 +17,17 @@
 package business
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
+	"encoding/hex"
 	"fmt"
-	"math/big"
 )
 
 type naming struct {
-	letterRunes     []rune
 	chunk_name_size int
 }
 
 func newNaming() naming {
 	return naming{
-		letterRunes:     []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
 		chunk_name_size: 48,
 	}
 }
@@ -40,19 +36,12 @@ func newNaming() naming {
 // getNameForTOCChunk generates a name for a TOC's chunk
 func (n naming) getNameForTOCChunk(session *Session, index int) string {
 	data := sha256.Sum256([]byte(fmt.Sprintf("%s_%s_%v", session.GetEmail(), session.GetPassword(), index)))
-	return base64.StdEncoding.EncodeToString(data[:])
+	return hex.EncodeToString(data[:])
 }
 
 
 //getNameForChunk generates a name for a generic chunk
 func (n naming) getNameForChunk() string {
-	b := make([]rune, n.chunk_name_size)
-	for i := range b {
-		nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(n.letterRunes))))
-		if err != nil {
-			panic(err)
-		}
-		b[i] = n.letterRunes[nBig.Int64()]
-	}
-	return string(b)
+	dd := getRndBytes(n.chunk_name_size/2)
+	return hex.EncodeToString(dd)
 }

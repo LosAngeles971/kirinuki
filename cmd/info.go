@@ -19,7 +19,6 @@ package cmd
 import (
 	log "github.com/sirupsen/logrus"
 
-	"github.com/LosAngeles971/kirinuki/business"
 	"github.com/spf13/cobra"
 )
 
@@ -30,9 +29,10 @@ var infoCmd = &cobra.Command{
 Usage:
 	kirinuki info --name <name>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g, err := business.New(email, askPassword(), getStorageMap())
+		g := getGateway(email, askPassword())
+		err := g.Login()
 		if err != nil {
-			log.Fatalf("failed to create Gateway due to %v", err)
+			log.Fatalf("login failed [%v]", err)
 		}
 		rr, err := g.Find(name)
 		if err != nil {

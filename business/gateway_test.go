@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"io"
 	"testing"
+)
 
-	"github.com/LosAngeles971/kirinuki/business/storage"
+const (
+	test_files = 10
 )
 
 func TestEndurance(t *testing.T) {
-	sm, err := storage.NewStorageMap(storage.WithTemp())
+	sm, err := getStorage()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,9 +40,8 @@ func TestEndurance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tot := 50
 	ee := newEnigma()
-	for i :=0; i < tot; i++ {
+	for i :=0; i < test_files; i++ {
 		size := 50000
 		data := make([]byte, size)
 		if _, err := io.ReadFull(rand.Reader, data); err != nil {
@@ -81,10 +82,10 @@ func TestEndurance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != tot {
-		t.Errorf("expected %v Kirinuki files not %v", tot, n)
+	if n != test_files {
+		t.Errorf("expected %v Kirinuki files not %v", test_files, n)
 	}
-	for i :=0; i < tot; i++ {
+	for i :=0; i < test_files; i++ {
 		name := fmt.Sprintf("test_file%v", i)
 		ok, err := g.Exist(name)
 		if err != nil {

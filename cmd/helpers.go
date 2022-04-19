@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/LosAngeles971/kirinuki/business"
 	"github.com/LosAngeles971/kirinuki/business/storage"
 
 	log "github.com/sirupsen/logrus"
@@ -42,4 +43,13 @@ func getStorageMap() *storage.StorageMap {
 		log.Fatalf("storage map file %s is corrupted or invalid, err = %v", storageMap, err)
 	}
 	return sm
+}
+
+func getGateway(email string, password string) business.Gateway {
+	g, err := business.New(email, password, getStorageMap())
+	if err != nil {
+		log.Fatalf("gateway creation failed [%v]", err)
+		panic(err)
+	}
+	return g
 }
