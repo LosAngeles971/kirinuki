@@ -19,8 +19,6 @@ package cmd
 import (
 	"io/ioutil"
 
-	"github.com/LosAngeles971/kirinuki/business"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -32,20 +30,24 @@ var uploadCmd = &cobra.Command{
 Usage:
 	kirinuki upload --email <email> --name <name> --filename <filename>`,
 	Run: func(cmd *cobra.Command, args []string) {
+		g := getGateway(email, askPassword())
+		err := g.Login()
+		if err != nil {
+			log.Fatalf("login failed [%v]", err)
+		}
 		data, err := ioutil.ReadFile(filename)
 		if err != nil {
-			log.Fatalf("failed to load %s due to %v", filename, err)
+			log.Fatalf("failed load %s [%v]", filename, err)
 		}
-		g, err := business.New(email, askPassword(), getStorageMap())
-		if err != nil {
-			log.Fatalf("failed to create Gateway due to %v", err)
-		}
-		log.Infof("uploading %s ...", name)
 		err = g.Upload(name, data, overwrite)
 		if err != nil {
-			log.Fatalf("failed to upload %s due to %v", name, err)
+			log.Fatalf("failed upload [%v]", name, err)
 		}
-		log.Infof("uploaded %s with %s", name, filename)
+		err = g.Logout()
+		if err != nil {
+			log.Fatalf("logut failed [%v]", err)
+		}
+		log.Info("success")
 	},
 }
 

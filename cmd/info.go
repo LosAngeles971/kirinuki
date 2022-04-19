@@ -35,19 +35,15 @@ Usage:
 			log.Fatalf("login failed [%v]", err)
 		}
 		if len(name) > 0 {
-			rr, err := g.Find(name)
+			err := g.Stat(name, true)
 			if err != nil {
 				log.Fatal(err)
-			}
-			for _, k := range rr {
-				log.Infof("kirinuki %s - date %v ", k.Name, k.Date)
 			}
 		} else {
-			n, err := g.Size()
+			err := g.Info()
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("your table of content includes %v files", n)
 		}
 	},
 }

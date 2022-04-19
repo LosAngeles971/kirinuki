@@ -18,8 +18,10 @@ package business
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/olekukonko/tablewriter"
 )
 
 type Gateway struct {
@@ -137,4 +139,51 @@ func (g Gateway) Download(name string) ([]byte, error) {
 		return nil, fmt.Errorf("file %s not present", name)
 	}
 	return getKirinuki(k, g.session.storage.Array())
+}
+
+func (g Gateway) Info() error {
+	if !g.session.isOpen() {
+		return fmt.Errorf("session %s is not open", g.session.email)
+	}
+	toc, err := g.session.getTOC()
+	if err != nil {
+		return err
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.Append([]string{"Last update", fmt.Sprint(toc.Lastupdate)})
+	table.Append([]string{"Number of files", fmt.Sprint(len(toc.Kfiles))})
+	table.Render()
+	return nil
+}
+
+func (g Gateway) Stat(name string, cmap bool) error {
+	if !g.session.isOpen() {
+		return fmt.Errorf("session %s is not open", g.session.email)
+	}
+	toc, err := g.session.getTOC()
+	if err != nil {
+		return err
+	}
+	k, ok := toc.get(name)
+	if !ok {
+		return fmt.Errorf("file %s not present", name)
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.Append([]string{"Name", name})
+	table.Append([]string{"Date", fmt.Sprint(k.Date)})
+	table.Append([]string{"Encryption", fmt.Sprint(k.Encryption)})
+	table.Append([]string{"Replicas", fmt.Sprint(k.Replicas)})
+	table.Append([]string{"Checksum", fmt.Sprint(k.Checksum)})
+	table.Append([]string{"Chunks", fmt.Sprint(len(k.Chunks))})
+	table.Render()
+	if !cmap {
+		return nil
+	}
+	t2 := tablewriter.NewWriter(os.Stdout)
+	t2.SetHeader([]string{"Chunk", "Name", "Size", "Targets"})
+	for i, chunk := range k.Chunks {
+		t2.Append([]string{fmt.Sprint(i), chunk.Name, fmt.Sprint(chunk.Real_size), fmt.Sprint(len(chunk.Targets))})
+	}
+	t2.Render()
+	return nil
 }
