@@ -17,9 +17,7 @@
 package business
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 )
 
 type naming struct {
@@ -32,16 +30,8 @@ func newNaming() naming {
 	}
 }
 
-
-// getNameForTOCChunk generates a name for a TOC's chunk
-func (n naming) getNameForTOCChunk(session *Session, index int) string {
-	data := sha256.Sum256([]byte(fmt.Sprintf("%s_%s_%v", session.GetEmail(), session.GetPassword(), index)))
-	return hex.EncodeToString(data[:])
-}
-
-
 //getNameForChunk generates a name for a generic chunk
-func (n naming) getNameForChunk() string {
+func (n naming) getName() string {
 	dd := getRndBytes(n.chunk_name_size/2)
 	return hex.EncodeToString(dd)
 }

@@ -3,7 +3,7 @@
         "minio": {
             "type": "s3",
             "config": {
-                "bucket": "testminio",
+                "bucket": "test",
                 "region": "do-not-care",
                 "accesskey": "minioadmin",
                 "secretkey": "minioadmin",

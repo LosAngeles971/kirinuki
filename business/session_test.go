@@ -27,24 +27,24 @@ const (
 	test_password = "losangeles971@gmail.com"
 )
 
-func TestBasic(t *testing.T) {
+func TestOpenClose(t *testing.T) {
 	sm, err := storage.NewStorageMap(storage.WithTemp())
 	if err != nil {
 		t.Fatal(err)
 	}
 	s, err := NewSession(test_email, test_password, WithStorage(sm))
 	if err != nil {
-		t.Fatalf("failed to create session from scratch, %v", err)
+		t.Fatalf("failed to create session [%v]", err)
 	}
 	err = s.createTableOfContent()
 	if err != nil {
-		t.Fatalf("failed to create new toc %v", err)
+		t.Fatalf("failed TOC creation [%v]", err)
 	}
 	err = s.login()
 	if err != nil {
-		t.Fatalf("failed to login to an already open session, %v", err)
+		t.Fatalf("failed login [%v]", err)
 	}
 	if !s.isOpen() {
-		t.Fatal("session from scratch must be already open")
+		t.Fatal("inconsistent state")
 	}
 }

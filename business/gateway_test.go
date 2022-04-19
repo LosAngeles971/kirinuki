@@ -27,7 +27,7 @@ const (
 	test_files = 10
 )
 
-func TestEndurance(t *testing.T) {
+func TestPutGet(t *testing.T) {
 	sm, err := getStorage()
 	if err != nil {
 		t.Fatal(err)

@@ -34,19 +34,26 @@ Usage:
 		if err != nil {
 			log.Fatalf("login failed [%v]", err)
 		}
-		rr, err := g.Find(name)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, k := range rr {
-			log.Infof("kirinuki %s - date %v ", k.Name, k.Date)
+		if len(name) > 0 {
+			rr, err := g.Find(name)
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, k := range rr {
+				log.Infof("kirinuki %s - date %v ", k.Name, k.Date)
+			}
+		} else {
+			n, err := g.Size()
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("your table of content includes %v files", n)
 		}
 	},
 }
 
 func init() {
 	infoCmd.PersistentFlags().StringVar(&name, "name", "", "pattern for name finding")
-	infoCmd.MarkPersistentFlagRequired("name")
 	rootCmd.AddCommand(infoCmd)
 }
 

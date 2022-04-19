@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
-	log "github.com/sirupsen/logrus"
 )
 
 type Kirinuki struct {
@@ -33,6 +32,7 @@ type Kirinuki struct {
 	Symmetrickey string   `json:"symmetrickey"`
 	Replicas     int      `json:"replicas"`
 	Checksum     string   `json:"checksum"`
+	chunkNames   []string
 }
 
 type KirinukiOption func(*Kirinuki)
@@ -52,18 +52,25 @@ func WithEncodedKey(key string) KirinukiOption {
 	}
 }
 
-func NewKirinukiTOC(email string, password string) *Kirinuki {
-	return NewKirinuki(newEnigma().hash([]byte(email)), WithEncodedKey(newEnigma(withMainkey(email, password)).getEncodedKey()))
+func WithChunkNames(chunkNames []string) KirinukiOption {
+	return func(k *Kirinuki) {
+		k.chunkNames = chunkNames
+		k.Chunks = []*chunk{}
+		for i, name := range k.chunkNames {
+			k.Chunks = append(k.Chunks, newChunk(i, name))
+		}
+	}
 }
 
 // NewKirinukiFile creates a KirinukiFile from a generic file
 func NewKirinuki(name string, opts ...KirinukiOption) *Kirinuki {
 	k := &Kirinuki{
-		Name: name,
+		Name:       name,
 		Encryption: false,
 		Padding:    false,
 		Date:       time.Now().UnixNano(),
 		Replicas:   1,
+		chunkNames: []string{},
 	}
 	for _, opt := range opts {
 		opt(k)
@@ -87,23 +94,24 @@ func (k *Kirinuki) addData(orig []byte) error {
 	} else {
 		data = orig
 	}
-	chunks, err := splitFile(data, getChunksNumberForKFile(data))
+	var names []string
+	if len(k.chunkNames) > 0 {
+		names = k.chunkNames
+	} else {
+		names = getChunks(data)
+	}
+	chunks, err := splitFile(data, len(names))
 	if err != nil {
 		return err
 	}
 	k.Chunks = []*chunk{}
-	for index := range chunks {
-		ch, err := newChunk(index, withChunkData(chunks[index]))
-		if err != nil {
-			log.Errorf("failed at chunk %v", index)
-			return err
-		}
-		k.Chunks = append(k.Chunks, ch)
+	for i, name := range names {
+		k.Chunks = append(k.Chunks, newChunk(i, name, withChunkData(chunks[i])))
 	}
 	return nil
 }
 
-// Build rebuilfs the original data file from fullfilled array of chunks
+// Build rebuilds the original data file from fullfilled array of chunks
 func (k *Kirinuki) Build() ([]byte, error) {
 	data := []byte{}
 	for index := 0; index < len(k.Chunks); index++ {
@@ -121,9 +129,12 @@ func (k *Kirinuki) Build() ([]byte, error) {
 	} else {
 		orig = data
 	}
-	ck := newEnigma().hash(orig)
-	if ck != k.Checksum {
-		return nil, fmt.Errorf("expected checksum [%s] not [%s]", k.Checksum, ck)
+	// Kirinki file for TOC does not have an expected checksum
+	if len(k.Checksum) > 0 {
+		ck := newEnigma().hash(orig)
+		if ck != k.Checksum {
+			return nil, fmt.Errorf("wrong checksum wanted [%s] having [%s]", k.Checksum, ck)
+		}
 	}
 	return orig, nil
 }

@@ -67,11 +67,11 @@ func TestTOC(t *testing.T) {
 	}
 	err = session.logout()
 	if err != nil {
-		t.Fatalf("cannot logout [%v]", err)
+		t.Fatalf("failed logout [%v]", err)
 	}
 	err = session.login()
 	if err != nil {
-		t.Fatalf("cannot login  [%v]", err)
+		t.Fatalf("failed login  [%v]", err)
 	}
 	toc2, err := session.getTOC()
 	if err != nil {

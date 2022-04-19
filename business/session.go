@@ -78,17 +78,22 @@ func (s *Session) createTableOfContent () error {
 	return s.logout()
 }
 
+// getNameForTOCChunk generates a name for a TOC's chunk
+func (s *Session) getTOCChunkNames() []string {
+	names := []string{}
+	e := newEnigma()
+	for i := 0; i < 3; i++ {
+		name := e.hash([]byte(fmt.Sprintf("%s_%s_%v", s.email, s.password, i)))
+		names = append(names, name)
+	}
+	return names
+}
+
 // getTableOfContent returns the empty Kirinuki file for an existend or new TOC
 func (s *Session) getTableOfContent() (*Kirinuki, error) {
-	k := NewKirinukiTOC(s.email, s.password)
-	k.Chunks = []*chunk{}
-	for index := 0; index < s.chunksForTOC; index++ {
-		ch, err := newChunk(index, withChunkName(newNaming().getNameForTOCChunk(s, index)))
-		if err != nil {
-			return nil, err
-		}
-		k.Chunks = append(k.Chunks, ch)
-	}
+	key := newEnigma(withMainkey(s.email, s.password)).getEncodedKey()
+	chunks := s.getTOCChunkNames()
+	k := NewKirinuki("toc", WithEncodedKey(key), WithChunkNames(chunks))
 	return k, nil
 }
 
@@ -114,25 +119,25 @@ func (s *Session) logout() error {
 		log.Errorf("session %s is already closed", s.email)
 		return nil
 	}
-	k := NewKirinukiTOC(s.email, s.password)
+	k, err := s.getTableOfContent()
+	if err != nil {
+		return err
+	}
 	k.Replicas = s.storage.Size()
 	tocdata, err := json.Marshal(s.toc)
 	if err != nil {
 		return err
 	}
-	datas, err := splitFile(tocdata, s.chunksForTOC)
+	err = k.addData(tocdata)
 	if err != nil {
 		return err
 	}
-	k.Chunks = []*chunk{}
-	for index, data := range datas {
-		ch, err := newChunk(index, withChunkData(data), withChunkName(newNaming().getNameForTOCChunk(s, index)))
-		if err != nil {
-			return err
-		}
-		k.Chunks = append(k.Chunks, ch)
+	err = putKiriuki(k, s.storage.Array())
+	if err != nil {
+		return err
 	}
-	return putKiriuki(k, s.storage.Array())
+	s.toc = nil
+	return nil
 }
 
 func (s *Session) getTOC() (*TOC, error) {

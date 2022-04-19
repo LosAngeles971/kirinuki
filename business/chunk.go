@@ -17,8 +17,6 @@
 package business
 
 import (
-	"fmt"
-
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
@@ -30,38 +28,24 @@ type chunk struct {
 	data      []byte
 }
 
-type chunkOption func(*chunk) error
+type chunkOption func(*chunk)
 
 func withChunkData(data []byte) chunkOption {
-	return func(c *chunk) error {
-		if len(data) < 1 {
-			return fmt.Errorf("wrong size of input data %v for a chunk", len(data))
-		}
+	return func(c *chunk) {
 		c.Real_size = len(data)
 		c.data = data
-		return nil
 	}
 }
 
-func withChunkName(name string) chunkOption {
-	return func(c *chunk) error {
-		c.Name = name
-		return nil
-	}
-}
-
-func newChunk(index int, opts ...chunkOption) (*chunk, error) {
+func newChunk(index int, name string, opts ...chunkOption) *chunk {
 	c := &chunk{}
 	c.Targets = []string{}
-	c.Name = newNaming().getNameForChunk()
+	c.Name = name
 	c.Index = index
 	for _, opt := range opts {
-		err := opt(c)
-		if err != nil {
-			return nil, err
-		}
+		opt(c)
 	}
-	return c, nil
+	return c
 }
 
 // setTargets assigns an array of storage targets to the chunk
