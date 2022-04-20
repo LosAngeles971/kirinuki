@@ -20,48 +20,37 @@ Kirinuki requires a storage configuration file including a plurality of storage 
                 "path": "/path1"
             }
         },
-        "local2": {
-            "type": "local",
+        "aws_eu-central-1": {
+            "type": "s3",
             "config": {
-                "path": "/path2"
+                "bucket": "mybucket",
+                "accesskey": "myaccesskey",
+                "secretkey": "mysecretkey",
+                "region": "eu-central-1"
             }
         },
-        "mys3_1": {
-          "type": "s3",
-          "config": {
-            "bucket": "b1",
-            "accesskey": "key",
-            "secretkey": "secret",
-            "region": "est"
-          }
+        "minio": {
+            "type": "s3",
+            "config": {
+                "bucket": "test",
+                "region": "do-not-care",
+                "accesskey": "minioadmin",
+                "secretkey": "minioadmin",
+                "endpoint": "http://localhost:9000",
+                "disable_ssl": "true"
+            }
         },
-        "mys3_2": {
-          "type": "s3",
-          "config": {
-            "bucket": "b2",
-            "accesskey": "key",
-            "secretkey": "secret",
-            "region": "ovest"
-          }
+        "sftp": {
+            "type": "sftp",
+            "config": {
+                "base_path": "/",
+                "directory": "upload",
+                "host": "localhost",
+                "port": "22",
+                "username": "foo",
+                "password": "pass"
+            }
         },
-        "mysftp_1": {
-          "type": "sftp",
-          "config": {
-            "directory": "mydir",
-            "host": "host1",
-            "username": "user",
-            "password": "secret"
-          }
-        },
-        "mysftp_2": {
-          "type": "sftp",
-          "config": {
-            "directory": "mydir",
-            "host": "host2",
-            "username": "user",
-            "password": "secret"
-          }
-        }
     }
 }
 ----
@@ -74,37 +63,85 @@ TBD
 
 When Kirinuki upload a file to the virtual storage, the data is encrypted and splitted into a number of chunks. Subsequently, Kirinuki uploads every single chunk to all possible storage targets. This ways is really hard (pratically impossible) to rebuild the original file from the scattered chunks of data, without Kirinuki and the master key. 
 
-== Using Kirinuki as a Golang library
-
-TBD
-
 == Using Kirinuki as a CLI
+
+Each time you launch the CLI, the latter asked you to type the password, unless the OS environment variable KIRINUKI has a value.
+
+Check the status of the table of content::
 
 [source,bash]
 ----
-losangeles971@losangeles971 MINGW64 ~/myhome/black/kirinuki (main)
-$ kirinuki.exe --help
-Kirinuki.
-
-Usage:
-  kirinuki [flags]
-  kirinuki [command]
-
-Available Commands:
-  download    download Kirinuki file
-  find        find files into the storage using regex matching
-  help        Help about any command
-  upload      upload Kirinuki file
-
-Flags:
-      --debug            enable debug
-      --email string     email
-  -h, --help             help for kirinuki
-      --scratch          scratch your table of content
-      --storage string   storage file config
-
-Use "kirinuki [command] --help" for more information about a command.
+./kirinuki.exe info --storage losangeles971.json --email kirinuki@gmail.com
++-------------+--------------------------------+
+| Last update | 52298867743-05-14 19:13:20     |
+|             | +0100 CET                      |
+| Size        |                              2 |
++-------------+--------------------------------+
 ----
+
+Upload a file::
+
+[source,bash]
+----
+kirinuki.exe upload --storage losangeles971.json --email kirinuki@gmail.com --name README.adoc --filename README.adoc
+time="2022-04-20T11:32:52+02:00" level=info msg=success
+----
+
+Check the status of a file::
+
+[source,bash]
+----
+kirinuki.exe info --storage losangeles971.json --email kirinuki@gmail.com --name README.adoc
++------------+------------------------------------------------------------------+
+| Name       | README.adoc                                                      |
+| Date       | 52300590815-09-21 06:38:20                                       |
+|            | +0100 CET                                                        |
+| Encryption | true                                                             |
+| Replicas   |                                                                1 |
+| Checksum   | bb08a0d1216bf6267d786cf970064f7d1a16bb519a8d5b26fcc3898c10ea5978 |
+| Chunks     |                                                                6 |
++------------+------------------------------------------------------------------+
++--------+--------------------------------------------------+
+| Index  |                                                0 |
+| Name   | d067b1c4e26421966b89373ba1cb1e8d4c1e4a629383f6ad |
+| Size   |                                              513 |
+| Target | aws_eu-central-1                                 |
++--------+--------------------------------------------------+
++--------+--------------------------------------------------+
+| Index  |                                                1 |
+| Name   | 3f2772d5e24d59df74d79480be2350dafc27139144ff10b0 |
+| Size   |                                              513 |
+| Target | aws_eu-central-1                                 |
++--------+--------------------------------------------------+
++--------+--------------------------------------------------+
+| Index  |                                                2 |
+| Name   | 848767cc52ecc445ccbd74e5d9a28c564d1e7909a3c09c99 |
+| Size   |                                              513 |
+| Target | aws_eu-central-1                                 |
++--------+--------------------------------------------------+
++--------+--------------------------------------------------+
+| Index  |                                                3 |
+| Name   | 7b026e0fb20878b5c7f5f999de6fdd40526f53dc9b907418 |
+| Size   |                                              513 |
+| Target | aws_eu-central-1                                 |
++--------+--------------------------------------------------+
++--------+--------------------------------------------------+
+| Index  |                                                4 |
+| Name   | 6ad45f63f0a084f47fa8c06a2986174ab92d53e27ea4358f |
+| Size   |                                              513 |
+| Target | aws_eu-central-1                                 |
++--------+--------------------------------------------------+
++--------+--------------------------------------------------+
+| Index  |                                                5 |
+| Name   | ff98040519cc2570e128eeeea89a862e66d1ad6aa633cf23 |
+| Size   |                                              515 |
+| Target | aws_eu-central-1                                 |
++--------+--------------------------------------------------+
+----
+
+== Using Kirinuki as a Golang library
+
+TBD
 
 == External libraries
 

@@ -35,7 +35,7 @@ Usage:
 			log.Fatalf("login failed [%v]", err)
 		}
 		if len(name) > 0 {
-			err := g.Stat(name, true)
+			err := g.Stat(name)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -18,6 +18,7 @@ package business
 
 import (
 	_ "embed"
+	"os"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
@@ -27,6 +28,9 @@ import (
 var minio []byte
 
 func getStorage() (*storage.StorageMap, error) {
+	if os.Getenv("CI") == "true" {
+		return storage.NewStorageMap(storage.WithTemp())
+	}
 	return storage.NewStorageMap(storage.WithJSONData(minio))
 }
 

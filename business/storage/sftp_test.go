@@ -21,36 +21,9 @@ import (
 	"testing"
 )
 
-//go:embed minio.json
-var minioFile []byte
+//go:embed sftp.json
+var sftpFile []byte
 
-func doTest(sName string, sFile []byte, t *testing.T) {
-	sm, err := NewStorageMap(WithJSONData(sFile))
-	if err != nil {
-		t.Fatal(err)
-	}
-	s, err := sm.Get(sName)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = s.Put("testfile", sftpFile)
-	if err != nil {
-		t.Fatalf("failed put file [%v]", err)
-	}
-	dd, err := s.Get("testfile")
-	if err != nil {
-		t.Fatalf("failed get file [%v]", err)
-	}
-	if len(dd) != len(sftpFile) {
-		t.Fatalf("wrong len [%v] nor [%v]", len(dd), len(sftpFile))
-	}
-	for i := 0; i < len(dd); i++ {
-		if dd[i] != sftpFile[i] {
-			t.Fatal("inconsistent data")
-		}
-	}
-}
-
-func TestMinio(t *testing.T) {
-	doTest("minio", minioFile, t)
+func TestSFTP(t *testing.T) {
+	doTest("sftp", sftpFile, t)
 }

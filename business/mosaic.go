@@ -19,9 +19,9 @@ package business
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -106,7 +106,11 @@ func (m *mosaic) check() bool {
 }
 
 func (m *mosaic) run(operation int) error {
-	log.Println("uploading kirinuki file...")
+	if operation == OPERATION_DOWNLOAD {
+		log.Debug("downloading kirinuki file...")
+	} else {
+		log.Debug("uploading kirinuki file...")
+	}
 	max_cycles := len(m.k.Chunks)*len(m.ss) + 1
 	cycle := 0
 	running := true
@@ -115,7 +119,7 @@ func (m *mosaic) run(operation int) error {
 		if err != nil {
 			return err
 		}
-		log.Printf("queue of %v workers for cycle %v", len(queue), cycle)
+		log.Debugf("cycle %v - queue's size %v", cycle, len(queue))
 		if len(queue) == 0 {
 			if !m.check() {
 				return errors.New("operation failed")

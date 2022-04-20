@@ -17,9 +17,13 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/LosAngeles971/kirinuki/business"
 	"github.com/spf13/cobra"
 )
 
@@ -30,21 +34,25 @@ var findCmd = &cobra.Command{
 Usage:
 	kirinuki find --name <regex pattern>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g, err := business.New(email, askPassword(), getStorageMap())
+		g := getGateway(email, askPassword())
+		err := g.Login()
 		if err != nil {
-			log.Fatalf("failed to create Gateway [%v]", err)
-		}
-		err = g.Login()
-		if err != nil {
-			log.Fatalf("failed to login [%v]", err)
+			log.Fatalf("login failed [%v]", err)
 		}
 		rr, err := g.Find(name)
 		if err != nil {
 			log.Fatal(err)
 		}
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"Name", "Date", "Replicas"})
 		for _, k := range rr {
-			log.Infof("kirinuki %s - date %v ", k.Name, k.Date)
+			table.Append([]string{
+				k.Name,
+				time.Unix(k.Date, 0).String(),
+				fmt.Sprint(k.Replicas),
+			})		
 		}
+		table.Render()
 	},
 }
 

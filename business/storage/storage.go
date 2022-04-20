@@ -29,11 +29,19 @@ type Storage interface {
 	Put(filename string, data []byte) error
 }
 
+// ConfigItem contains configurations for a specific storage target
+type ConfigItem struct {
+	Type string            `yaml:"type" json:"type"`
+	Cfg  map[string]string `yaml:"config" json:"config"`
+}
+
 // newStorage creates a new Storage object for a given specific storage type
 func newStorage(name string, ci ConfigItem) (Storage, error) {
 	switch ci.Type {
-	case local.Kind, s3.Kind, sftp.Kind:
+	case local.Kind, s3.Kind:
 		return newStowStorage(name, ci)
+	case sftp.Kind:
+		return NewSFTP(name, ci.Cfg), nil
 	default:
 		return nil, fmt.Errorf("unrecognized type of storage %s", ci.Type)
 	}

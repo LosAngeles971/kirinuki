@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -28,12 +27,6 @@ import (
 const (
 	TEMP_STORAGE = "temp"
 )
-
-// ConfigItem contains configurations for a specific storage target
-type ConfigItem struct {
-	Type string            `yaml:"type" json:"type"`
-	Cfg  map[string]string `yaml:"config" json:"config"`
-}
 
 // ConfigMap contains configurations for a plurality of storage targets
 type ConfigMap struct {
@@ -134,15 +127,4 @@ func (m *StorageMap) Size() int {
 
 func (m *StorageMap) Array() []Storage {
 	return m.targets
-}
-
-func Init(filename string) ([]byte, error) {
-	cm := ConfigMap{
-		Map: map[string]ConfigItem{},
-	}
-	if strings.HasSuffix(filename, ".yml") || strings.HasSuffix(filename, ".yaml") {
-		return yaml.Marshal(&cm)
-	} else {
-		return json.Marshal(&cm)
-	}
 }

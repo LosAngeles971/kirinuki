@@ -36,7 +36,7 @@ func (w *worker) init(ch *chunk, t storage.Storage) {
 }
 
 func (w *worker) upload() {
-	log.Printf("uploading chunk %s ...", w.chunk.Name)
+	log.Debugf("uploading chunk %s ...", w.chunk.Name)
 	err := w.target.Put(w.chunk.Name, w.chunk.data)
 	if err == nil {
 		w.state = STATE_COMPLETED
@@ -47,7 +47,7 @@ func (w *worker) upload() {
 }
 
 func (w *worker) download() {
-	log.Printf("downloading chunk %s ...", w.chunk.Name)
+	log.Debugf("downloading chunk %s ...", w.chunk.Name)
 	data, err := w.target.Get(w.chunk.Name)
 	if err == nil {
 		w.chunk.data = data

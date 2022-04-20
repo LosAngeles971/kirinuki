@@ -19,15 +19,17 @@ package cmd
 import (
     "os"
     "golang.org/x/crypto/ssh/terminal"
-	"log"
+	"fmt"
 )
 
 func askPassword() string {
-    log.Println("Enter your Kirinuki passphrase")
+    if pwd, ok := os.LookupEnv("KIRINUKI"); ok {
+		return pwd
+	}
+    fmt.Println("Enter your Kirinuki passphrase")
     data, err := terminal.ReadPassword(int(os.Stdin.Fd()))
     if err != nil {
-        log.Panic(err)
-        os.Exit(1)
+        panic(err)
     }
     return string(data)
 }

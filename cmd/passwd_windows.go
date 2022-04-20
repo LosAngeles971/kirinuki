@@ -26,15 +26,17 @@ import (
     "os"
     "syscall"
     "golang.org/x/term"
-	"log"
+	"fmt"
 )
 
 func askPassword() string {
-	log.Println("Enter your Kirinuki passphrase")
+	if pwd, ok := os.LookupEnv("KIRINUKI"); ok {
+		return pwd
+	}
+	fmt.Println("Enter your Kirinuki passphrase")
 	data, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		log.Panic(err)
-		os.Exit(1)
+		panic(err)
 	}
 	return string(data)
 }

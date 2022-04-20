@@ -19,6 +19,7 @@ package business
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/olekukonko/tablewriter"
@@ -110,7 +111,7 @@ func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
 		return fmt.Errorf("file with name %s already exists", name)
 	}
 	// overwrite in any case
-	k := NewKirinuki(name)
+	k := NewKirinuki(name, WithRandomkey())
 	err = k.addData(data)
 	if err != nil {
 		return err
@@ -150,13 +151,24 @@ func (g Gateway) Info() error {
 		return err
 	}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.Append([]string{"Last update", fmt.Sprint(toc.Lastupdate)})
-	table.Append([]string{"Number of files", fmt.Sprint(len(toc.Kfiles))})
+	table.Append([]string{"Last update", time.Unix(toc.Lastupdate, 0).String()})
+	table.Append([]string{"Size", fmt.Sprint(len(toc.Kfiles))})
 	table.Render()
 	return nil
 }
 
-func (g Gateway) Stat(name string, cmap bool) error {
+func (g Gateway) PrintChunk(c *chunk) {
+	t1 := tablewriter.NewWriter(os.Stdout)
+	t1.Append([]string{"Index", fmt.Sprint(c.Index)})
+	t1.Append([]string{"Name", c.Name})
+	t1.Append([]string{"Size", fmt.Sprint(c.Real_size)})
+	for _, t := range c.Targets {
+		t1.Append([]string{"Target", t})
+	}
+	t1.Render()
+}
+
+func (g Gateway) Stat(name string) error {
 	if !g.session.isOpen() {
 		return fmt.Errorf("session %s is not open", g.session.email)
 	}
@@ -170,20 +182,14 @@ func (g Gateway) Stat(name string, cmap bool) error {
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.Append([]string{"Name", name})
-	table.Append([]string{"Date", fmt.Sprint(k.Date)})
+	table.Append([]string{"Date", time.Unix(k.Date, 0).String()})
 	table.Append([]string{"Encryption", fmt.Sprint(k.Encryption)})
 	table.Append([]string{"Replicas", fmt.Sprint(k.Replicas)})
 	table.Append([]string{"Checksum", fmt.Sprint(k.Checksum)})
 	table.Append([]string{"Chunks", fmt.Sprint(len(k.Chunks))})
 	table.Render()
-	if !cmap {
-		return nil
+	for _, c := range k.Chunks {
+		g.PrintChunk(c)
 	}
-	t2 := tablewriter.NewWriter(os.Stdout)
-	t2.SetHeader([]string{"Chunk", "Name", "Size", "Targets"})
-	for i, chunk := range k.Chunks {
-		t2.Append([]string{fmt.Sprint(i), chunk.Name, fmt.Sprint(chunk.Real_size), fmt.Sprint(len(chunk.Targets))})
-	}
-	t2.Render()
 	return nil
 }

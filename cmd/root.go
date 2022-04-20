@@ -17,8 +17,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var name string
@@ -27,6 +29,13 @@ var email string
 var overwrite bool
 var debug bool
 var storageMap string
+
+func setLog(cmd *cobra.Command, args []string) {
+	if debug {
+		logrus.SetLevel(logrus.DebugLevel)
+		logrus.Debug("debug level activated")
+	}
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "kirinuki",
@@ -38,6 +47,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(0)
 		}
 	},
+	PersistentPreRun: setLog,
 }
 
 func Execute() {
