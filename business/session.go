@@ -17,6 +17,7 @@
 package business
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -27,11 +28,12 @@ import (
 
 // Session includes the mandatory set of information to work with Kirinuki files
 type Session struct {
-	email        string
-	password     string
-	chunksForTOC int
-	toc          *TOC
-	storage      *storage.StorageMap
+	email           string
+	password        string
+	chunksForTOC    int
+	chunk_name_size int
+	toc             *TOC
+	storage         *storage.StorageMap
 }
 
 type SessionOption func(*Session)
@@ -47,6 +49,7 @@ func NewSession(email string, password string, opts ...SessionOption) (*Session,
 		email:        email,
 		chunksForTOC: 3,
 		password:     password,
+		chunk_name_size: 48,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -69,17 +72,32 @@ func (s *Session) GetPassword() string {
 	return s.password
 }
 
-func (s *Session) createTableOfContent () error {
-	var err error
-	s.toc, err = newTOC()
-	if err != nil {
-		return err
+// getNameForTOCChunk generates the number of chunks and their names for a generic file
+func (s *Session) getChunks(file []byte) []string {
+	names := []string{}
+	n := 11
+	size := len(file)
+	if size < 1000000 {
+		n = 9
 	}
-	return s.logout()
+	if size < 100000 {
+		n = 7
+	}
+	if size < 10000 {
+		n = 5
+	}
+	if size < 1000 {
+		n = 3
+	}
+	for i := 0; i <= n; i++ {
+		dd := getRndBytes(s.chunk_name_size / 2)
+		names = append(names, hex.EncodeToString(dd))
+	}
+	return names
 }
 
-// getNameForTOCChunk generates a name for a TOC's chunk
-func (s *Session) getTOCChunkNames() []string {
+// getNameForTOCChunk generates the number of chunks and their names for the TOC
+func (s *Session) getChunksForTOC() []string {
 	names := []string{}
 	e := newEnigma()
 	for i := 0; i < 3; i++ {
@@ -89,11 +107,19 @@ func (s *Session) getTOCChunkNames() []string {
 	return names
 }
 
+func (s *Session) createTableOfContent() error {
+	var err error
+	s.toc, err = newTOC()
+	if err != nil {
+		return err
+	}
+	return s.logout()
+}
+
 // getTableOfContent returns the empty Kirinuki file for an existend or new TOC
 func (s *Session) getTableOfContent() (*Kirinuki, error) {
 	key := newEnigma(withMainkey(s.email, s.password)).getEncodedKey()
-	chunks := s.getTOCChunkNames()
-	k := NewKirinuki("toc", WithEncodedKey(key), WithChunkNames(chunks))
+	k := NewKirinuki("toc", s.getChunksForTOC(), WithEncodedKey(key))
 	return k, nil
 }
 

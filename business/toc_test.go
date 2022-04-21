@@ -24,7 +24,7 @@ import (
 	"github.com/LosAngeles971/kirinuki/business/storage"
 )
 
-//go:embed storage/minio.json
+//go:embed storage/sftp.json
 var minio []byte
 
 func getStorage() (*storage.StorageMap, error) {
@@ -56,7 +56,7 @@ func TestTOC(t *testing.T) {
 		t.Fatalf("failed to get toc from session due to %v", err)
 	}
 	for _, tt := range k_data_tests {
-		k := NewKirinuki(tt.name)
+		k := NewKirinuki(tt.name, session.getChunks(tt.data))
 		err := k.addData(tt.data)
 		if err != nil {
 			t.Fatal(err)

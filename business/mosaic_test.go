@@ -40,7 +40,11 @@ var k_data_tests []k_data_test = []k_data_test{
 }
 
 // TestMosaic verifies upload and download of Kirinuki files
-func TestMosaicWithoutEncryption(t *testing.T) {
+func TestMosaic(t *testing.T) {
+	ss, err := NewSession(test_email, test_password)
+	if err != nil {
+		t.Fatal(err)
+	}
 	sm, err := storage.NewStorageMap(storage.WithTemp())
 	if err != nil {
 		t.Fatal(err)
@@ -48,11 +52,11 @@ func TestMosaicWithoutEncryption(t *testing.T) {
 	ee := newEnigma()
 	for _, tt := range k_data_tests {
 		tt.checksum = ee.hash(tt.data) 
-		k1 := NewKirinuki(tt.name)
+		k1 := NewKirinuki(tt.name, ss.getChunks(tt.data))
 		if k1.Encryption {
 			t.Fatalf("encryption should be off [%v]", k1.Encryption)
 		}
-		k2 := NewKirinuki(tt.name, WithRandomkey())
+		k2 := NewKirinuki(tt.name, ss.getChunks(tt.data), WithRandomkey())
 		if !k2.Encryption {
 			t.Fatalf("encryption should be on [%v]", k2.Encryption)
 		}

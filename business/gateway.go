@@ -111,7 +111,7 @@ func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
 		return fmt.Errorf("file with name %s already exists", name)
 	}
 	// overwrite in any case
-	k := NewKirinuki(name, WithRandomkey())
+	k := NewKirinuki(name, g.session.getChunks(data), WithRandomkey())
 	err = k.addData(data)
 	if err != nil {
 		return err

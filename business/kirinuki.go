@@ -52,26 +52,20 @@ func WithEncodedKey(key string) KirinukiOption {
 	}
 }
 
-func WithChunkNames(chunkNames []string) KirinukiOption {
-	return func(k *Kirinuki) {
-		k.chunkNames = chunkNames
-		k.Chunks = []*chunk{}
-		for i, name := range k.chunkNames {
-			k.Chunks = append(k.Chunks, newChunk(i, name))
-		}
-	}
-}
-
 // NewKirinukiFile creates a KirinukiFile from a generic file
-func NewKirinuki(name string, opts ...KirinukiOption) *Kirinuki {
+func NewKirinuki(name string, chunkNames []string, opts ...KirinukiOption) *Kirinuki {
 	k := &Kirinuki{
 		Name:       name,
 		Encryption: false,
 		Padding:    false,
 		Date:       time.Now().UnixNano(),
 		Replicas:   1,
-		chunkNames: []string{},
+		chunkNames: chunkNames,
 	}
+	k.Chunks = []*chunk{}
+		for i, name := range k.chunkNames {
+			k.Chunks = append(k.Chunks, newChunk(i, name))
+		}
 	for _, opt := range opts {
 		opt(k)
 	}
@@ -94,18 +88,12 @@ func (k *Kirinuki) addData(orig []byte) error {
 	} else {
 		data = orig
 	}
-	var names []string
-	if len(k.chunkNames) > 0 {
-		names = k.chunkNames
-	} else {
-		names = getChunks(data)
-	}
-	chunks, err := splitFile(data, len(names))
+	chunks, err := splitFile(data, len(k.chunkNames))
 	if err != nil {
 		return err
 	}
 	k.Chunks = []*chunk{}
-	for i, name := range names {
+	for i, name := range k.chunkNames {
 		k.Chunks = append(k.Chunks, newChunk(i, name, withChunkData(chunks[i])))
 	}
 	return nil
