@@ -14,34 +14,61 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package storage
+package mosaic
 
 import (
+	_ "embed"
+	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/sirupsen/logrus"
 )
 
-// TestLocal verifies put/get files using local storage target
-func TestLocal(t *testing.T) {
-	ll, err := newStorage("test", ConfigItem{
+//go:embed test_file1.png
+var test_file1 []byte
+
+// TestMosaic verifies upload and download of Kirinuki files
+func TestMosaic(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
+	base := os.TempDir() + "/mosaic"
+	_ = os.Mkdir(base, os.ModePerm)
+	target, err := storage.NewStowStorage("mosaic", storage.ConfigItem{
 		Type: "local",
 		Cfg: map[string]string{
-			"path": os.TempDir(),
+			"path": base,
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := "test of filesystem storage"
-	err = ll.Put("test1", []byte(input))
+	sFile := base + "/tobe_uploaded"
+	tFile := base + "/tobe_downloaded.png"
+	err = ioutil.WriteFile(sFile, test_file1, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	output, err := ll.Get("test1")
+	h1, err := enigma.GetFileHash(sFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(output) != input {
-		t.Fatalf("expected [%s] not [%s]", input, string(output))
+	mm := New(WithStorage([]storage.Storage{target}))
+	chunks, err := mm.Upload(sFile)
+	if err != nil {
+		t.Fatalf("failed upload -> %v", err)
 	}
+	err = mm.Download(chunks, tFile)
+	if err != nil {
+		t.Fatalf("failed download -> %v", err)
+	}
+	h2, err := enigma.GetFileHash(tFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 != h2 {
+		t.Fatalf("mismatch %s %s", h1, h2)
+	}
+	os.RemoveAll(base + "/")
 }

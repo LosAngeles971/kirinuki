@@ -17,11 +17,13 @@
 package business
 
 import (
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"os"
 
+	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/LosAngeles971/kirinuki/business/mosaic"
 	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/toc"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -32,8 +34,9 @@ type Session struct {
 	password        string
 	chunksForTOC    int
 	chunk_name_size int
-	toc             *TOC
+	toc             *toc.TableOfContent
 	storage         *storage.StorageMap
+	tempDir         string
 }
 
 type SessionOption func(*Session)
@@ -44,12 +47,20 @@ func WithStorage(m *storage.StorageMap) SessionOption {
 	}
 }
 
+func WithTemp(temp string) SessionOption {
+	return func(s *Session) {
+		s.tempDir = temp
+	}
+}
+
 func NewSession(email string, password string, opts ...SessionOption) (*Session, error) {
 	s := &Session{
-		email:        email,
-		chunksForTOC: 3,
-		password:     password,
+		email:           email,
+		chunksForTOC:    3,
+		password:        password,
 		chunk_name_size: 48,
+		tempDir:         os.TempDir(),
+		toc:             nil,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -64,79 +75,40 @@ func NewSession(email string, password string, opts ...SessionOption) (*Session,
 	return s, nil
 }
 
-func (s *Session) GetEmail() string {
-	return s.email
-}
-
-func (s *Session) GetPassword() string {
-	return s.password
-}
-
-// getNameForTOCChunk generates the number of chunks and their names for a generic file
-func (s *Session) getChunks(file []byte) []string {
-	names := []string{}
-	n := 11
-	size := len(file)
-	if size < 1000000 {
-		n = 9
+func (s *Session) loadTableOfContent() (*toc.TableOfContent, error) {
+	chunks := toc.GetChunks(s.email, s.password, s.storage.Array(), s.tempDir)
+	if len(chunks) < 1 {
+		return nil, fmt.Errorf("no chunks %v for toc", len(chunks))
 	}
-	if size < 100000 {
-		n = 7
-	}
-	if size < 10000 {
-		n = 5
-	}
-	if size < 1000 {
-		n = 3
-	}
-	for i := 0; i <= n; i++ {
-		dd := getRndBytes(s.chunk_name_size / 2)
-		names = append(names, hex.EncodeToString(dd))
-	}
-	return names
-}
-
-// getNameForTOCChunk generates the number of chunks and their names for the TOC
-func (s *Session) getChunksForTOC() []string {
-	names := []string{}
-	e := newEnigma()
-	for i := 0; i < 3; i++ {
-		name := e.hash([]byte(fmt.Sprintf("%s_%s_%v", s.email, s.password, i)))
-		names = append(names, name)
-	}
-	return names
-}
-
-func (s *Session) createTableOfContent() error {
-	var err error
-	s.toc, err = newTOC()
+	ecTocFile := s.tempDir + "/" + mosaic.GetFilename(24)
+	mm := mosaic.New(mosaic.WithStorage(s.storage.Array()))
+	err := mm.Download(chunks, ecTocFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.logout()
-}
-
-// getTableOfContent returns the empty Kirinuki file for an existend or new TOC
-func (s *Session) getTableOfContent() (*Kirinuki, error) {
-	key := newEnigma(withMainkey(s.email, s.password)).getEncodedKey()
-	k := NewKirinuki("toc", s.getChunksForTOC(), WithEncodedKey(key))
-	return k, nil
+	ee := enigma.New(enigma.WithMainkey(s.email, s.password))
+	tocFile := s.tempDir + "/" +mosaic.GetFilename(24)
+	err = ee.DecryptFile(ecTocFile, tocFile)
+	if err != nil {
+		return nil, err
+	}
+	toc, err := toc.New(toc.WithFilename(tocFile))
+	if err != nil {
+		return nil, err
+	}
+	return toc, nil
 }
 
 func (s *Session) login() error {
 	if s.isOpen() {
 		return nil
 	}
-	k, err := s.getTableOfContent()
+	toc, err := s.loadTableOfContent()
 	if err != nil {
 		return err
 	}
-	data, err := getKirinuki(k, s.storage.Array())
-	if err != nil {
-		return err
-	}
-	s.toc, err = newTOC(TOCWithData(data))
-	return err
+	s.toc = toc
+	return nil
 }
 
 // logout saves the current open TOC on cloud and closes the session
@@ -145,32 +117,28 @@ func (s *Session) logout() error {
 		log.Errorf("session %s is already closed", s.email)
 		return nil
 	}
-	k, err := s.getTableOfContent()
+	tocFile := s.tempDir + "/" +mosaic.GetFilename(24)
+	err := s.toc.Save(tocFile)
 	if err != nil {
 		return err
 	}
-	k.Replicas = s.storage.Size()
-	tocdata, err := json.Marshal(s.toc)
+	ecTocFile := s.tempDir + "/" +mosaic.GetFilename(24)
+	ee := enigma.New(enigma.WithMainkey(s.email, s.password))
+	err = ee.EncryptFile(tocFile, ecTocFile)
 	if err != nil {
 		return err
 	}
-	err = k.addData(tocdata)
-	if err != nil {
-		return err
+	mm := mosaic.New(mosaic.WithStorage(s.storage.Array()))
+	chunks := toc.GetChunks(s.email, s.password, s.storage.Array(), s.tempDir)
+	if len(chunks) < 1 {
+		return fmt.Errorf("no chunks %v for toc", len(chunks))
 	}
-	err = putKiriuki(k, s.storage.Array())
+	err = mm.UploadWithChunks(chunks, ecTocFile)
 	if err != nil {
 		return err
 	}
 	s.toc = nil
 	return nil
-}
-
-func (s *Session) getTOC() (*TOC, error) {
-	if !s.isOpen() {
-		return nil, fmt.Errorf("session is not open")
-	}
-	return s.toc, nil
 }
 
 func (s *Session) isOpen() bool {

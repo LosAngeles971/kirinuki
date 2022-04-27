@@ -14,72 +14,60 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
+package kirinuki
 
 import (
+	_ "embed"
+	"io/ioutil"
+	"os"
 	"testing"
+
+	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/sirupsen/logrus"
 )
 
-const (
-	enigma_phrase = "Kirinuki is a secure password management software by LosAngeles971"
-	enigma_email  = "losangeles971@gmail.com"
-)
+//go:embed test_file1.png
+var test_file1 []byte
 
-func TestHash(t *testing.T) {
-	e := newEnigma()
-	h := e.hash([]byte(enigma_phrase))
-	t.Log(h)
-}
-
-func TestEncryptionWithMainKey(t *testing.T) {
-	e := newEnigma(withMainkey(enigma_email, enigma_phrase))
-	plaintext := []byte(enigma_phrase)
-	encrypted, err := e.encrypt(plaintext)
+func TestKirinuki(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
+	base := os.TempDir() + "/kirinuki"
+	_ = os.Mkdir(base, os.ModePerm)
+	target, err := storage.NewStowStorage("kirinuki", storage.ConfigItem{
+		Type: "local",
+		Cfg: map[string]string{
+			"path": base,
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	decrypted, err := e.decrypt(encrypted)
+	sFile := base + "/tobe_uploaded"
+	tFile := base + "/tobe_downloaded.png"
+	err = ioutil.WriteFile(sFile, test_file1, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	text2 := string(decrypted)
-	if string(plaintext) != text2 {
-		t.FailNow()
-	}
-}
-
-func TestEncryptionWithRandomkey(t *testing.T) {
-	e := newEnigma(withRandomkey())
-	plaintext := []byte(enigma_phrase)
-	encrypted, err := e.encrypt(plaintext)
+	h1, err := enigma.GetFileHash(sFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decrypted, err := e.decrypt(encrypted)
+	kk := NewKirinuki("test", WithRandomkey())
+	err = kk.Upload(sFile, []storage.Storage{target})
 	if err != nil {
 		t.Fatal(err)
 	}
-	text2 := string(decrypted)
-	if string(plaintext) != text2 {
-		t.FailNow()
-	}
-}
-
-func TestEncryptionWithEncodedkey(t *testing.T) {
-	e1 := newEnigma(withRandomkey())
-	key := e1.getEncodedKey()
-	plaintext := []byte(enigma_phrase)
-	encrypted, err := e1.encrypt(plaintext)
+	err = kk.Download(tFile, []storage.Storage{target})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e2 := newEnigma(withEncodedkey(key))
-	decrypted, err := e2.decrypt(encrypted)
+	h2, err := enigma.GetFileHash(tFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	text2 := string(decrypted)
-	if string(plaintext) != text2 {
-		t.FailNow()
+	if h1 != h2 {
+		t.Fatalf("mismatch %s - %s", h1, h2)
 	}
+	os.RemoveAll(base + "/")
 }

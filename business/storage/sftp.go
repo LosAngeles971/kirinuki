@@ -4,13 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/pkg/sftp"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -120,6 +122,63 @@ func (s SFTP) Put(filename string, data []byte) error {
 	}
 	if n != len(data) {
 		return fmt.Errorf("uploaded %v of %v", n, len(data))
+	}
+	return nil
+}
+
+func (s SFTP) Download(name string, filename string) (string, error) {
+	sftpClient, err := s.getClient()
+	if err != nil {
+		return "", fmt.Errorf("failed to connect [%v]", err)
+	}
+	defer sftpClient.Close()
+	sftpFile := strings.Join([]string{s.basedir, name}, "/")
+	destFile, err := sftpClient.OpenFile(sftpFile, (os.O_RDONLY))
+    if err != nil {
+        return "", fmt.Errorf("failed to open {%s} [%v]", sftpFile, err)
+    }
+    defer destFile.Close()
+	f, err := os.Create(filename)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	sh := enigma.NewStreamHash(destFile)
+	n, err := io.Copy(f, sh.GetReader())
+	if err != nil || n == 0 {
+		return "", fmt.Errorf("transferred %v bytes -> %v", n, err)
+	}
+	return sh.GetHash(), nil
+}
+
+func (s SFTP) Upload(filename string, name string) error {
+	info, err := os.Stat(filename)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	sftpClient, err := s.getClient()
+	if err != nil {
+		return fmt.Errorf("failed to connect [%v]", err)
+	}
+	defer sftpClient.Close()
+	sftpFile := strings.Join([]string{s.basedir, name}, "/")
+	destFile, err := sftpClient.OpenFile(sftpFile, (os.O_WRONLY|os.O_CREATE|os.O_TRUNC))
+    if err != nil {
+        return fmt.Errorf("failed to create {%s} [%v]", sftpFile, err)
+    }
+    defer destFile.Close()
+	n, err := destFile.ReadFrom(r)
+	if err != nil {
+		return err
+	}
+	if n != info.Size() {
+		return fmt.Errorf("uploaded %v of %v", n, info.Size())
 	}
 	return nil
 }

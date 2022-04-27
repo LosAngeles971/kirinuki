@@ -21,7 +21,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/LosAngeles971/kirinuki/business/kirinuki"
+	"github.com/LosAngeles971/kirinuki/business/mosaic"
 	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/toc"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -40,7 +43,13 @@ func New(email string, password string, m *storage.StorageMap) (Gateway, error) 
 }
 
 func (g Gateway) CreateTableOfContent() error {
-	return g.session.createTableOfContent()
+	var err error
+	g.session.toc, err = toc.New()
+	if err != nil {
+		g.session.toc = nil
+		return err
+	}
+	return nil
 }
 
 func (g Gateway) Login() error {
@@ -51,119 +60,87 @@ func (g Gateway) Logout() error {
 	return g.session.logout()
 }
 
-func (g Gateway) Get(name string) (*Kirinuki, error) {
+func (g Gateway) Get(name string) (*kirinuki.Kirinuki, error) {
 	if !g.session.isOpen() {
 		return nil, fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return nil, err
-	}
-	k, ok := toc.get(name)
+	k, ok := g.session.toc.Get(name)
 	if !ok {
 		return nil, fmt.Errorf("file %s is not present", name)
 	}
 	return k, nil
 }
 
-func (g Gateway) Find(pattern string) ([]Kirinuki, error) {
+func (g Gateway) Find(pattern string) ([]kirinuki.Kirinuki, error) {
 	if !g.session.isOpen() {
 		return nil, fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return nil, err
-	}
-	return toc.find(pattern), nil
+	return g.session.toc.Find(pattern), nil
 }
 
 func (g Gateway) Exist(name string) (bool, error) {
 	if !g.session.isOpen() {
 		return false, fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return false, err
-	}
-	return toc.exist(name), nil
+	return g.session.toc.Exist(name), nil
 }
 
 func (g Gateway) Size() (int, error) {
 	if !g.session.isOpen() {
 		return 0, fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return 0, err
-	}
-	return len(toc.Kfiles), nil
+	return g.session.toc.Size(), nil
 }
 
-func (g Gateway) Upload(name string, data []byte, overwrite bool) error {
+func (g Gateway) Upload(filename string, name string, overwrite bool) error {
 	if !g.session.isOpen() {
 		return fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
+	if g.session.toc.Exist(name) && !overwrite {
+		return fmt.Errorf("file %s already exists", name)
+	}
+	k := kirinuki.NewKirinuki(name, kirinuki.WithRandomkey())
+	err := k.Upload(filename, g.session.storage.Array())
 	if err != nil {
 		return err
 	}
-	if toc.exist(name) && !overwrite {
-		return fmt.Errorf("file with name %s already exists", name)
-	}
-	// overwrite in any case
-	k := NewKirinuki(name, g.session.getChunks(data), WithRandomkey())
-	err = k.addData(data)
-	if err != nil {
-		return err
-	}
-	err = putKiriuki(k, g.session.storage.Array())
-	if err != nil {
-		return err
-	}
-	ok := toc.add(k)
+	ok := g.session.toc.Add(k)
 	if !ok {
 		return fmt.Errorf("failed to add %s to TOC", name)
 	}
 	return nil
 }
 
-func (g Gateway) Download(name string) ([]byte, error) {
+func (g Gateway) Download(name string, filename string) error {
 	if !g.session.isOpen() {
-		return nil, fmt.Errorf("session %s is not open", g.session.email)
+		return fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return nil, err
-	}
-	k, ok := toc.get(name)
+	k, ok := g.session.toc.Get(name)
 	if !ok {
-		return nil, fmt.Errorf("file %s not present", name)
+		return fmt.Errorf("file %s not present", name)
 	}
-	return getKirinuki(k, g.session.storage.Array())
+	return k.Download(filename, g.session.storage.Array())
 }
 
 func (g Gateway) Info() error {
 	if !g.session.isOpen() {
 		return fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return err
-	}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.Append([]string{"Last update", time.Unix(toc.Lastupdate, 0).String()})
-	table.Append([]string{"Size", fmt.Sprint(len(toc.Kfiles))})
+	table.Append([]string{"Last update", time.Unix(g.session.toc.Lastupdate, 0).String()})
+	table.Append([]string{"Size", fmt.Sprint(g.session.toc.Size())})
 	table.Render()
 	return nil
 }
 
-func (g Gateway) PrintChunk(c *chunk) {
+func (g Gateway) PrintChunk(c *mosaic.Chunk) {
 	t1 := tablewriter.NewWriter(os.Stdout)
 	t1.Append([]string{"Index", fmt.Sprint(c.Index)})
 	t1.Append([]string{"Name", c.Name})
 	t1.Append([]string{"Size", fmt.Sprint(c.Real_size)})
+	t1.Append([]string{"Checksum", c.Checksum})
 	for _, t := range c.Targets {
-		t1.Append([]string{"Target", t})
+		t1.Append([]string{"Target", t.Name()})
 	}
 	t1.Render()
 }
@@ -172,19 +149,13 @@ func (g Gateway) Stat(name string) error {
 	if !g.session.isOpen() {
 		return fmt.Errorf("session %s is not open", g.session.email)
 	}
-	toc, err := g.session.getTOC()
-	if err != nil {
-		return err
-	}
-	k, ok := toc.get(name)
+	k, ok := g.session.toc.Get(name)
 	if !ok {
 		return fmt.Errorf("file %s not present", name)
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.Append([]string{"Name", name})
 	table.Append([]string{"Date", time.Unix(k.Date, 0).String()})
-	table.Append([]string{"Encryption", fmt.Sprint(k.Encryption)})
-	table.Append([]string{"Replicas", fmt.Sprint(k.Replicas)})
 	table.Append([]string{"Checksum", fmt.Sprint(k.Checksum)})
 	table.Append([]string{"Chunks", fmt.Sprint(len(k.Chunks))})
 	table.Render()

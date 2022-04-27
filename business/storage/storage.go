@@ -18,6 +18,7 @@ package storage
 
 import (
 	"fmt"
+
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
 	"github.com/graymeta/stow/sftp"
@@ -26,7 +27,9 @@ import (
 type Storage interface {
 	Name() string
 	Get(name string) ([]byte, error)
-	Put(filename string, data []byte) error
+	Put(name string, data []byte) error
+	Download(name string, filename string) (string, error) // save a file from target storage locally and computing the hash
+	Upload(filename string, name string) error
 }
 
 // ConfigItem contains configurations for a specific storage target
@@ -39,7 +42,7 @@ type ConfigItem struct {
 func newStorage(name string, ci ConfigItem) (Storage, error) {
 	switch ci.Type {
 	case local.Kind, s3.Kind:
-		return newStowStorage(name, ci)
+		return NewStowStorage(name, ci)
 	case sftp.Kind:
 		return NewSFTP(name, ci.Cfg), nil
 	default:

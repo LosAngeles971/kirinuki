@@ -14,48 +14,58 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
+package enigma
 
 import (
-	"testing"
+	"crypto/sha256"
+	"encoding/hex"
+	"hash"
+	"io"
+	"os"
 )
 
-type split_test struct {
-	input  []byte
-	output [][]byte
-	chunks int
+type StreamHash struct {
+	r io.Reader
+	h hash.Hash
+	t io.Reader
 }
 
-var split_test1 []split_test = []split_test{
-	{
-		input: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-		output: [][]byte{
-			{0, 1, 2},
-			{3, 4, 5},
-			{6, 7, 8, 9},
-		},
-		chunks: 3,
-	},
-}
-
-func TestSplit(t *testing.T) {
-	for _, test := range split_test1 {
-		chunks, err := splitFile(test.input, test.chunks)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(chunks) != len(test.output) {
-			t.Fatalf("expected %v chunks not %v", len(test.output), len(chunks))
-		}
-		for i := range test.output {
-			if len(test.output[i]) != len(chunks[i]) {
-				t.Fatalf("expected size of %v not %v for chunk %v", len(test.output[i]), len(chunks[i]), i)
-			}
-			for j := range test.output[i] {
-				if test.output[i][j] != chunks[i][j] {
-					t.Fatalf("expected value %v not %v for chunk %v at index %v", test.output[i][j], chunks[i][j], i, j)
-				}
-			}
-		}
+func NewStreamHash(r io.Reader) StreamHash {
+	s := StreamHash{
+		r: r,
+		h: sha256.New(),
 	}
+	s.t = io.TeeReader(s.r, s.h)
+	return s
+}
+
+func (s StreamHash) GetReader() io.Reader {
+	return s.t
+}
+
+// func (h StreamHash) GetHashedStream(r io.Reader) io.Reader {
+// 	return io.TeeReader(r, h.hasher)
+// }
+
+func (s StreamHash) GetHash() string {
+	return hex.EncodeToString(s.h.Sum(nil))
+}
+
+func GetHash(data []byte) string {
+	h := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(h[:])
+}
+
+func GetFileHash(filename string) (string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	n, err := io.Copy(h, f)
+	if err != nil || n == 0 {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

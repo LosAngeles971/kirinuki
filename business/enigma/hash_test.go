@@ -14,46 +14,53 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
+package enigma
 
 import (
-	"github.com/LosAngeles971/kirinuki/business/storage"
-
-	log "github.com/sirupsen/logrus"
+	"bytes"
+	_ "embed"
+	"io/ioutil"
+	"os"
+	"testing"
 )
 
-//worker is in charge of upload/downloading a single chunk to/from a target storage
-type worker struct {
-	state  int
-	chunk  *chunk
-	target storage.Storage
-}
+//go:embed kirinuki.png
+var hFile []byte
 
-func (w *worker) init(ch *chunk, t storage.Storage) {
-	w.state = STATE_IDLE
-	w.chunk = ch
-	w.target = t
-}
-
-func (w *worker) upload() {
-	log.Debugf("uploading chunk %s ...", w.chunk.Name)
-	err := w.target.Put(w.chunk.Name, w.chunk.data)
-	if err == nil {
-		w.state = STATE_COMPLETED
-	} else {
-		w.state = STATE_FAILED
-		log.Fatal(err)
+func TestHashOfStream(t *testing.T) {
+	h1 := GetHash(hFile)
+	r := bytes.NewReader(hFile)
+	hr := NewStreamHash(r)
+	data, err := ioutil.ReadAll(hr.GetReader())
+	if err != nil {
+		t.Fatal(err)
+	}
+	tFile := os.TempDir() + "/teefile.png"
+	err = ioutil.WriteFile(tFile, data, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := GetFileHash(tFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 != h2 {
+		t.Fatalf("mimatch %s %s", h1, h2)
 	}
 }
 
-func (w *worker) download() {
-	log.Debugf("downloading chunk %s ...", w.chunk.Name)
-	data, err := w.target.Get(w.chunk.Name)
-	if err == nil {
-		w.chunk.data = data
-		w.state = STATE_COMPLETED
-	} else {
-		w.state = STATE_FAILED
-		log.Fatal(err)
+func TestHashOfData(t *testing.T) {
+	h1 := GetHash(hFile)
+	sFile := os.TempDir() + "/testhash.png"
+	err := ioutil.WriteFile(sFile, hFile, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := GetFileHash(sFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 != h2 {
+		t.Fatalf("mimatch %s %s", h1, h2)
 	}
 }

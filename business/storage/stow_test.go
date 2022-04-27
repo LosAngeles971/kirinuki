@@ -18,20 +18,29 @@ package storage
 
 import (
 	_ "embed"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
+
+	"github.com/LosAngeles971/kirinuki/business/enigma"
 )
 
 //go:embed minio.json
 var minioFile []byte
 
+//go:embed stow.win.local.json
+var localFile []byte
+
 func doTest(sName string, sFile []byte, t *testing.T) {
+	hh := enigma.GetHash(sftpFile)
 	sm, err := NewStorageMap(WithJSONData(sFile))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed storage map init -> %v", err)
 	}
 	s, err := sm.Get(sName)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to ge storage %s -> %v", sName, err)
 	}
 	err = s.Put("testfile", sftpFile)
 	if err != nil {
@@ -41,16 +50,41 @@ func doTest(sName string, sFile []byte, t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed get file [%v]", err)
 	}
-	if len(dd) != len(sftpFile) {
-		t.Fatalf("wrong len [%v] nor [%v]", len(dd), len(sftpFile))
+	if enigma.GetHash(dd) != hh {
+		t.Fatalf("expected hash %s not %s", hh, enigma.GetHash(dd))
 	}
-	for i := 0; i < len(dd); i++ {
-		if dd[i] != sftpFile[i] {
-			t.Fatal("inconsistent data")
-		}
+	f1 := fmt.Sprintf("%s/testfile", os.TempDir())
+	h1, err := s.Download("testfile", f1)
+	if h1 != hh {
+		t.Fatalf("mismatch %s %s", h1, hh)
+	}
+	if err != nil {
+		t.Fatalf("failed download file [%v]", err)
+	}
+	df, err := ioutil.ReadFile(f1)
+	if err != nil {
+		t.Fatalf("failed to read file %s -> %v", f1, err)
+	}
+	if enigma.GetHash(df) != hh {
+		t.Fatalf("df - expected hash %s not %s", hh, enigma.GetHash(df))
+	}
+	err = s.Upload(f1, "testfile2")
+	if err != nil {
+		t.Fatalf("failed to upload %s -> %v", f1, err)
+	}
+	du, err := s.Get("testfile2")
+	if err != nil {
+		t.Fatalf("failed get file [%v]", err)
+	}
+	if enigma.GetHash(du) != hh {
+		t.Fatalf("du - expcted hash %s not %s", hh, enigma.GetHash(du))
 	}
 }
 
 func TestMinio(t *testing.T) {
 	doTest("minio", minioFile, t)
+}
+
+func TestLocal(t *testing.T) {
+	doTest("local", localFile, t)
 }

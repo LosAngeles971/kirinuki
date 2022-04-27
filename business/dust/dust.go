@@ -14,10 +14,16 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
+package dust
 
 import (
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // extractChunk extracts a subset from an array of bytes starting from the given index
@@ -41,7 +47,7 @@ func extractChunk(data []byte, startindex int, size int) []byte {
 }
 
 // splitFile splits a single array of bytes into an array of chunks
-func splitFile(data []byte, n_chunks int) ([][]byte, error) {
+func SplitData(data []byte, n_chunks int) ([][]byte, error) {
 	chunks := [][]byte{}
 	if n_chunks < 1 {
 		return chunks, errors.New("0 chunks not possible")
@@ -60,4 +66,56 @@ func splitFile(data []byte, n_chunks int) ([][]byte, error) {
 		start_index += chunk_size
 	}
 	return chunks, nil
+}
+
+func SplitFile(filename string, chunkFiles []string) error {
+	f, err := os.Open(filename)
+    if err != nil {
+		return err
+	}
+    defer f.Close()
+    info, _ := f.Stat()
+    size := info.Size()
+	chunks := int64(len(chunkFiles))
+	tot := int64(0)
+	for i := int64(0); i < chunks; i++ {
+		var chunk_size int64
+		if i == chunks-1 {
+			chunk_size = size - tot
+		} else {
+			chunk_size = size / chunks
+			tot += chunk_size
+		}
+		buf := make([]byte, chunk_size)
+		n, err := f.Read(buf)
+		if err != nil || n != int(chunk_size) {
+			return err
+		}
+		err = ioutil.WriteFile(chunkFiles[i], buf, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func MergeFile(chunkFiles []string, filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	for i := 0; i < len(chunkFiles); i++ {
+		log.Debugf("merging %s to %s ...", chunkFiles[i], filename)
+		chunk, err := os.Open(chunkFiles[i])
+		if err != nil {
+			return err
+		}
+		n, err := io.Copy(f, chunk)
+		if err != nil || n == 0 {
+			return fmt.Errorf("error copying %v bytes to %s -> %v", n, filename, err)
+		}
+		chunk.Close()
+	}
+	return nil
 }

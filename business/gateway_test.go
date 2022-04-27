@@ -20,7 +20,12 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"os"
 	"testing"
+
+	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -28,7 +33,19 @@ const (
 )
 
 func TestPutGet(t *testing.T) {
-	sm, err := getStorage()
+	logrus.SetLevel(logrus.DebugLevel)
+	base := os.TempDir() + "/gateway"
+	_ = os.Mkdir(base, os.ModePerm)
+	sm, err := storage.NewStorageMap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = sm.Add("session", storage.ConfigItem{
+		Type: "local",
+		Cfg: map[string]string{
+			"path": base,
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +64,7 @@ func TestPutGet(t *testing.T) {
 		if _, err := io.ReadFull(rand.Reader, data); err != nil {
 			panic(err.Error())
 		}
-		checksum := ee.hash(data)
+		checksum := enigma.GetHash(data)
 		name := fmt.Sprintf("test_file%v", i)
 		err = g.Login()
 		if err != nil {

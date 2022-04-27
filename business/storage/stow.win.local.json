@@ -1,0 +1,10 @@
+{
+    "map": {
+        "local": {
+            "type": "local",
+            "config": {
+                "path": "C:/Users/LOSANG~1/AppData/Local/Temp"
+            }
+        }
+    }
+}

@@ -14,29 +14,36 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
+package enigma
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"io"
+	"os"
 )
 
 const (
 	key_size = 32
 )
 
+//const V1 byte = 0x1
+
 type Enigma struct {
-	keyString   [key_size]byte
-	prefix      string
+	keyString [key_size]byte
+	prefix    string
+	buffer_size int
+	iv_size int
+	hmacSize int
 }
 
 type EnigmaOption func(*Enigma)
 
-func getRndBytes(size int) []byte {
+func GetRndBytes(size int) []byte {
 	key := make([]byte, size)
 	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		panic(err.Error())
@@ -44,28 +51,31 @@ func getRndBytes(size int) []byte {
 	return key
 }
 
-func withMainkey(email string, password string) EnigmaOption {
+func WithMainkey(email string, password string) EnigmaOption {
 	return func(e *Enigma) {
 		e.keyString = sha256.Sum256([]byte(email + password + e.prefix))
 	}
 }
 
-func withRandomkey() EnigmaOption {
+func WithRandomkey() EnigmaOption {
 	return func(e *Enigma) {
-		e.keyString = sha256.Sum256(getRndBytes(key_size))
+		e.keyString = sha256.Sum256(GetRndBytes(key_size))
 	}
 }
 
-func withEncodedkey(key string) EnigmaOption {
+func WithEncodedkey(key string) EnigmaOption {
 	return func(e *Enigma) {
 		key, _ := hex.DecodeString(key)
 		copy(e.keyString[:], key[:key_size])
 	}
 }
 
-func newEnigma(opts ...EnigmaOption) *Enigma {
+func New(opts ...EnigmaOption) *Enigma {
 	e := &Enigma{
-		prefix:      "Kirinuki",
+		prefix: "Kirinuki",
+		buffer_size: 16 * 1024,
+		iv_size: 16,
+		hmacSize: sha512.Size,
 	}
 	for _, opt := range opts {
 		opt(e)
@@ -73,12 +83,7 @@ func newEnigma(opts ...EnigmaOption) *Enigma {
 	return e
 }
 
-func (e *Enigma) hash(data []byte) string {
-	h := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(h[:])
-}
-
-func (e *Enigma) encrypt(plaintext []byte) ([]byte, error) {
+func (e *Enigma) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.keyString[:])
 	if err != nil {
 		return []byte{}, err
@@ -91,11 +96,11 @@ func (e *Enigma) encrypt(plaintext []byte) ([]byte, error) {
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return []byte{}, err
 	}
-	ciphertext := aesGCM.Seal(nonce, nonce, plaintext, nil)
+	ciphertext := aesGCM.Seal(nonce, nonce, data, nil)
 	return ciphertext, nil
 }
 
-func (e *Enigma) decrypt(enc []byte) ([]byte, error) {
+func (e *Enigma) Decrypt(enc []byte) ([]byte, error) {
 	//Create a new Cipher Block from the key
 	block, err := aes.NewCipher(e.keyString[:])
 	if err != nil {
@@ -118,6 +123,62 @@ func (e *Enigma) decrypt(enc []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func (e *Enigma) getEncodedKey() string {
+func (e *Enigma) GetEncodedKey() string {
 	return hex.EncodeToString(e.keyString[:])
+}
+
+func (e *Enigma) EncryptFile(sFile string, tFile string) error {
+    in, err := os.Open(sFile)
+    if err != nil { 
+		return err 
+	}
+    defer in.Close()
+    out, err := os.Create(tFile)
+    if err != nil { 
+		return err 
+	}
+    defer out.Close()
+    inBuf := make([]byte, e.buffer_size)
+    for {
+        n, err := in.Read(inBuf)
+		if err == io.EOF {
+			return nil
+		}
+        if err != nil && err != io.EOF { 
+			return err 
+		}
+        outBuf, err := e.Encrypt(inBuf[:n])
+        if err != nil {
+			return err
+		}
+        out.Write(outBuf)
+    }
+}
+
+func (e *Enigma) DecryptFile(sFile string, tFile string) error {
+	in, err := os.Open(sFile)
+    if err != nil { 
+		return err 
+	}
+    defer in.Close()
+    out, err := os.Create(tFile)
+    if err != nil { 
+		return err 
+	}
+    defer out.Close()
+    inBuf := make([]byte, e.buffer_size)
+    for {
+        n, err := in.Read(inBuf)
+		if err == io.EOF {
+			return nil
+		}
+        if err != nil && err != io.EOF { 
+			return err 
+		}
+        outBuf, err := e.Decrypt(inBuf[:n])
+        if err != nil {
+			return err
+		}
+        out.Write(outBuf)
+    }
 }
