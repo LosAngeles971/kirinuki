@@ -69,10 +69,7 @@ func (k *Kirinuki) Upload(filename string, ss []storage.Storage) error {
 		return err
 	}
 	k.Chunks, err = mm.Upload(ff)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (k *Kirinuki) Download(filename string, ss []storage.Storage) error {

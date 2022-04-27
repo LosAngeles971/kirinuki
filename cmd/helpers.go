@@ -45,8 +45,8 @@ func getStorageMap() *storage.StorageMap {
 	return sm
 }
 
-func getGateway(email string, password string) business.Gateway {
-	g, err := business.New(email, password, getStorageMap())
+func getGateway(email string, password string) *business.Gateway {
+	g, err := business.New(email, askPassword(), business.WithStorage(getStorageMap()))
 	if err != nil {
 		log.Fatalf("gateway creation failed [%v]", err)
 		panic(err)

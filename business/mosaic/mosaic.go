@@ -104,15 +104,23 @@ func (m *Mosaic) getTarget(chunks []*Chunk) (*Chunk, storage.Storage) {
 	return nil, nil
 }
 
-func (m *Mosaic) isComplete(chunks []*Chunk) bool {
+func (m *Mosaic) isComplete(chunks []*Chunk) (bool, bool) {
+	completed := true
 	for _, c := range chunks {
+		ok := false
 		for _, status := range c.status {
 			if status == STATE_MISSING {
-				return false
+				return false, false
+			}
+			if status == STATE_COMPLETED {
+				ok = true
 			}
 		}
+		if !ok {
+			completed = false
+		}
 	}
-	return true
+	return true, completed
 }
 
 func (m *Mosaic) download(chunk *Chunk) error {
@@ -139,8 +147,13 @@ func (m *Mosaic) upload(chunks []*Chunk, filename string) ([]*Chunk, error) {
 	}
 	log.Debugf("uploading [%v] chunks", len(chunks))
 	for {
-		if m.isComplete(chunks) {
-			return chunks, nil
+		end, completed := m.isComplete(chunks)
+		if end {
+			if completed {
+				return chunks, nil
+			} else {
+				return chunks, fmt.Errorf("failed to upload %s", filename)
+			}
 		}
 		var wg sync.WaitGroup
 		for i :=0; i < m.max_threads; i++ {
@@ -168,6 +181,11 @@ func (m *Mosaic) Upload(filename string) ([]*Chunk, error) {
 }
 
 func (m *Mosaic) UploadWithChunks(chunks []*Chunk, filename string) error {
+	for _, c := range chunks {
+		for _, s := range m.ss {
+			c.status[s.Name()] = STATE_MISSING
+		}
+	}
 	_, err := m.upload(chunks, filename)
 	return err
 }

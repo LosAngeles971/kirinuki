@@ -135,6 +135,9 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if len(dd) < 1 {
+		return "", fmt.Errorf("download file %s got 0 bytes", filename)
+	}
 	err = ioutil.WriteFile(filename, dd, 0755)
 	if err != nil {
 		return "", err
@@ -146,6 +149,9 @@ func (s StowStorage) Upload(filename string, name string) error {
 	info, err := os.Stat(filename)
 	if err != nil {
 		return err
+	}
+	if info.Size() < 1 {
+		return fmt.Errorf("cannot upload file %s it got 0 bytes", filename)
 	}
 	f, err := os.Open(filename)
 	if err != nil {
@@ -164,5 +170,6 @@ func (s StowStorage) Upload(filename string, name string) error {
 		return err
 	}
 	_, err = c.Put(name, r, info.Size(), nil)
+	log.Debugf("uploaded file %s bytes %v", filename, info.Size())
 	return err
 }

@@ -17,13 +17,11 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
 )
 
@@ -44,12 +42,11 @@ Usage:
 			log.Fatal(err)
 		}
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Name", "Date", "Replicas"})
+		table.SetHeader([]string{"Name", "Date"})
 		for _, k := range rr {
 			table.Append([]string{
 				k.Name,
 				time.Unix(k.Date, 0).String(),
-				fmt.Sprint(k.Replicas),
 			})		
 		}
 		table.Render()

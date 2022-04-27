@@ -17,10 +17,6 @@
 package cmd
 
 import (
-	"io/ioutil"
-
-	"github.com/LosAngeles971/kirinuki/business"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -32,19 +28,11 @@ var downloadCmd = &cobra.Command{
 Usage:
 	kirinuki download --email <email> --name <name> --filename <filename>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g, err := business.New(email, askPassword(), getStorageMap())
-		if err != nil {
-			log.Fatalf("failed to create Gateway due to %v", err)
-		}
+		g := getGateway(email, askPassword())
 		log.Infof("downloading %s ...", name)
-		data, err := g.Download(name)
+		err := g.Download(name, filename)
 		if err != nil {
-			log.Fatalf("failed to download %s due to %v", name, err)
-		}
-		log.Infof("saving %s to local file %s ...", name, filename)
-		err = ioutil.WriteFile(filename, data, 0755)
-		if err != nil {
-			log.Fatalf("failed to save %s to %s due to %v", name, filename, err)
+			log.Fatalf("failed to download %s to %s -> %v", name, filename, err)
 		}
 		log.Infof("saved %s to local file %s", name, filename)
 	},

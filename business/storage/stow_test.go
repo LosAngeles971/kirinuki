@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/sirupsen/logrus"
 )
 
 //go:embed minio.json
@@ -33,6 +34,7 @@ var minioFile []byte
 var localFile []byte
 
 func doTest(sName string, sFile []byte, t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
 	hh := enigma.GetHash(sftpFile)
 	sm, err := NewStorageMap(WithJSONData(sFile))
 	if err != nil {

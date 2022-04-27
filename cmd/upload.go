@@ -17,8 +17,6 @@
 package cmd
 
 import (
-	"io/ioutil"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -35,17 +33,13 @@ Usage:
 		if err != nil {
 			log.Fatalf("login failed [%v]", err)
 		}
-		data, err := ioutil.ReadFile(filename)
-		if err != nil {
-			log.Fatalf("failed load %s [%v]", filename, err)
-		}
-		err = g.Upload(name, data, overwrite)
+		err = g.Upload(filename, name, overwrite)
 		if err != nil {
 			log.Fatalf("failed upload [%v]", name, err)
 		}
 		err = g.Logout()
 		if err != nil {
-			log.Fatalf("logut failed [%v]", err)
+			log.Fatalf("logout failed [%v]", err)
 		}
 		log.Info("success")
 	},

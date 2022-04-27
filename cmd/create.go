@@ -18,8 +18,6 @@ package cmd
 
 import (
 	log "github.com/sirupsen/logrus"
-
-	"github.com/LosAngeles971/kirinuki/business"
 	"github.com/spf13/cobra"
 )
 
@@ -30,11 +28,8 @@ var createCmd = &cobra.Command{
 Usage:
 	kirinuki create`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g, err := business.New(email, askPassword(), getStorageMap())
-		if err != nil {
-			log.Fatalf("failed to create Gateway due to %v", err)
-		}
-		err = g.CreateTableOfContent()
+		g := getGateway(email, askPassword())
+		err := g.CreateTableOfContent()
 		if err != nil {
 			log.Fatalf("failed to create new table of content due to %v", err)
 		}
