@@ -21,96 +21,60 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
-	"github.com/LosAngeles971/kirinuki/business/mosaic"
-	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/LosAngeles971/kirinuki/business/toc"
+	"github.com/LosAngeles971/kirinuki/internal"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	test_files    = 10
-	test_email    = "losangeles971@gmail.com"
-	test_password = "losangeles971@gmail.com"
+	test_files    = 1
 )
 
+// TestSession tests the creation, alteration, storing and re-opening of a session
 func TestSession(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	base := os.TempDir() + "/session"
-	_ = os.Mkdir(base, os.ModePerm)
-	sm, err := storage.NewStorageMap()
+	sm := internal.GetStorage("session", t)
+	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm), WithTemp(internal.GetTmp()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = sm.Add("session", storage.ConfigItem{
-		Type: "local",
-		Cfg: map[string]string{
-			"path": base,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	g, err := New(test_email, test_password, WithStorage(sm), WithTemp(base))
-	if err != nil {
-		t.Fatalf("failed to create session [%v]", err)
-	}
-	g.toc, err = toc.New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	g.SetEmptyTableOfContent()
 	kName := "test"
 	k := kirinuki.NewKirinuki(kName, kirinuki.WithRandomkey())
-	ok := g.toc.Add(k)
-	if !ok {
-		t.Fatal("missed add")
+	// Adding something to the TableOfContent
+	if !g.toc.Add(k) {
+		t.Fatal("cannog add a kirinuki file")
 	}
+	// Saving the TableOfContent
 	err = g.Logout()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to logout -> %v", err)
 	}
+	// Opening the TableOfContent
 	err = g.Login()
 	if err != nil {
-		t.Fatalf("failed login [%v]", err)
+		t.Fatalf("failed re-login [%v]", err)
 	}
 	if !g.isOpen() {
 		t.Fatal("inconsistent state")
 	}
+	// Check if the kirinuki file is still there into the TableOfContent
 	if !g.toc.Exist(kName) {
 		t.Fatalf("missing kFile [%s]", kName)
 	}
-	os.RemoveAll(base)
+	internal.Clean("session")
 }
 
 func TestPutGet(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
-	base := os.TempDir() + "/gateway"
-	_ = os.Mkdir(base, os.ModePerm)
-	sm, err := storage.NewStorageMap()
+	sm := internal.GetStorage("gateway", t)
+	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm), WithTemp(internal.GetTmp()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = sm.Add("gateway", storage.ConfigItem{
-		Type: "local",
-		Cfg: map[string]string{
-			"path": base,
-		},
-	})
-	if err != nil {
-		t.Fatalf("failed storage adding -> %v", err)
-	}
-	g, err := New(test_email, test_password, WithStorage(sm))
-	if err != nil {
-		t.Fatalf("failed gateway creation -> %v", err)
-	}
-	err = g.CreateTableOfContent()
-	if err != nil {
-		t.Fatalf("failed toc creation -> %v", err)
-	}
+	g.SetEmptyTableOfContent()
 	err = g.Logout()
 	if err != nil {
 		t.Fatalf("failed logout -> %v", err)
@@ -122,7 +86,7 @@ func TestPutGet(t *testing.T) {
 			panic(err.Error())
 		}
 		checksum := enigma.GetHash(data)
-		fName := base + "/" + mosaic.GetFilename(24)
+		fName := internal.GetTmp() + "/" + kirinuki.GetFilename(24)
 		name := fmt.Sprintf("testfile%v", i)
 		err = ioutil.WriteFile(fName, data, 0755)
 		if err != nil {
@@ -144,10 +108,10 @@ func TestPutGet(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		dName := base + "/" + mosaic.GetFilename(24)
+		dName := internal.GetTmp() + "/" + kirinuki.GetFilename(24)
 		err = g.Download(name, dName)
 		if err != nil {
-			t.Errorf("failed download %s due to %v", name, err)
+			t.Fatalf("failed download %s -> %v", name, err)
 		}
 		dChecksum, err := enigma.GetFileHash(dName)
 		if err != nil {
@@ -170,13 +134,13 @@ func TestPutGet(t *testing.T) {
 	}
 	for i := 0; i < test_files; i++ {
 		name := fmt.Sprintf("test_file%v", i)
-		ok, err := g.Exist(name)
+		f, err := g.Exist(name)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !ok {
+		if f == nil {
 			t.Errorf("expected one found entry for %v", name)
 		}
 	}
-	os.RemoveAll(base)
+	internal.Clean("gateway")
 }

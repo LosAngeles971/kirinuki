@@ -19,55 +19,65 @@ package kirinuki
 import (
 	_ "embed"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/enigma"
-	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/sirupsen/logrus"
+	"github.com/LosAngeles971/kirinuki/business/mosaic"
+	"github.com/LosAngeles971/kirinuki/internal"
 )
 
-//go:embed test_file1.png
-var test_file1 []byte
-
-func TestKirinuki(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	base := os.TempDir() + "/kirinuki"
-	_ = os.Mkdir(base, os.ModePerm)
-	target, err := storage.NewStowStorage("kirinuki", storage.ConfigItem{
-		Type: "local",
-		Cfg: map[string]string{
-			"path": base,
-		},
-	})
+func TestSplitFile(t *testing.T) {
+	k := New(internal.GetStorage("split", t))
+	file := NewKirinuki("split-merge")
+	file.Chunks = []*mosaic.Chunk{
+		mosaic.NewChunk(1, "c1", mosaic.WithFilename(internal.GetTmp() + "/split1")),
+		mosaic.NewChunk(1, "c2", mosaic.WithFilename(internal.GetTmp() + "/split2")),
+		mosaic.NewChunk(1, "c3", mosaic.WithFilename(internal.GetTmp() + "/split3")),
+	}
+	splitFile := internal.GetTmp() + "/split.png" 
+	mergeFile := internal.GetTmp() + "/merge.png" 
+	err := ioutil.WriteFile(splitFile, test_file1, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sFile := base + "/tobe_uploaded"
-	tFile := base + "/tobe_downloaded.png"
-	err = ioutil.WriteFile(sFile, test_file1, 0755)
+	err = k.splitFile(splitFile, file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h1, err := enigma.GetFileHash(sFile)
+	err = k.mergeChunks(file, mergeFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	kk := NewKirinuki("test", WithRandomkey())
-	err = kk.Upload(sFile, []storage.Storage{target})
+	h1, err := enigma.GetFileHash(splitFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = kk.Download(tFile, []storage.Storage{target})
-	if err != nil {
-		t.Fatal(err)
-	}
-	h2, err := enigma.GetFileHash(tFile)
+	h2, err := enigma.GetFileHash(mergeFile)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if h1 != h2 {
 		t.Fatalf("mismatch %s - %s", h1, h2)
 	}
-	os.RemoveAll(base + "/")
+	internal.Clean("split")
+}
+
+func TestIO(t *testing.T) {
+	k := New(internal.GetStorage("kirinuki", t))
+	sourceFile := internal.GetTmp() + "/source.png" 
+	err := ioutil.WriteFile(sourceFile, test_file1, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := NewKirinuki("io")
+	err = k.Upload(sourceFile, file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	destFile := internal.GetTmp() + "/dest.png" 
+	err = k.Download(file, destFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	internal.Clean("kirinuki")
 }

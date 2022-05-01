@@ -19,12 +19,10 @@ package mosaic
 import (
 	_ "embed"
 	"io/ioutil"
-	"os"
 	"testing"
 
+	"github.com/LosAngeles971/kirinuki/internal"
 	"github.com/LosAngeles971/kirinuki/business/enigma"
-	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/sirupsen/logrus"
 )
 
 //go:embed test_file1.png
@@ -32,43 +30,32 @@ var test_file1 []byte
 
 // TestMosaic verifies upload and download of Kirinuki files
 func TestMosaic(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	base := os.TempDir() + "/mosaic"
-	_ = os.Mkdir(base, os.ModePerm)
-	target, err := storage.NewStowStorage("mosaic", storage.ConfigItem{
-		Type: "local",
-		Cfg: map[string]string{
-			"path": base,
-		},
-	})
+	sm := internal.GetStorage("mosaic", t)
+	sChunk := NewChunk(1, "file", WithFilename(internal.GetTmp() + "/tobe_uploaded"))
+	tChunk := NewChunk(1, "file", WithFilename(internal.GetTmp() + "/tobe_downloaded"))
+	err := ioutil.WriteFile(sChunk.filename, test_file1, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sFile := base + "/tobe_uploaded"
-	tFile := base + "/tobe_downloaded.png"
-	err = ioutil.WriteFile(sFile, test_file1, 0755)
+	h1, err := enigma.GetFileHash(sChunk.filename)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h1, err := enigma.GetFileHash(sFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mm := New(WithStorage([]storage.Storage{target}))
-	chunks, err := mm.Upload(sFile)
+	mm := New(sm, WithTempDir(internal.GetTmp()))
+	err = mm.Upload([]*Chunk{sChunk})
 	if err != nil {
 		t.Fatalf("failed upload -> %v", err)
 	}
-	err = mm.Download(chunks, tFile)
+	err = mm.Download([]*Chunk{tChunk})
 	if err != nil {
 		t.Fatalf("failed download -> %v", err)
 	}
-	h2, err := enigma.GetFileHash(tFile)
+	h2, err := enigma.GetFileHash(tChunk.filename)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if h1 != h2 {
 		t.Fatalf("mismatch %s %s", h1, h2)
 	}
-	os.RemoveAll(base + "/")
+	internal.Clean("mosaic")
 }

@@ -17,12 +17,10 @@
 package mosaic
 
 import (
-	"encoding/hex"
 	"fmt"
 	"os"
 	"sync"
 
-	"github.com/LosAngeles971/kirinuki/business/dust"
 	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/storage"
 	log "github.com/sirupsen/logrus"
@@ -34,17 +32,11 @@ const (
 	STATE_MISSING   = "missing"
 )
 
-func GetFilename(size int) string {
-	dd := enigma.GetRndBytes(size)
-	return hex.EncodeToString(dd)
-}
-
 // Mosaic is in charge of providing upload/download functionalities for Kirinuki files
 type Mosaic struct {
-	ss          []storage.Storage
+	ms          *storage.MultiStorage
 	max_threads int
 	tempDir     string
-	nameSize 	int
 }
 
 type MosaicOption func(*Mosaic)
@@ -55,22 +47,11 @@ func WithTempDir(tempDir string) MosaicOption {
 	}
 }
 
-func WithStorage(ss []storage.Storage) MosaicOption {
-	return func(m *Mosaic) {
-		m.ss = ss
-	}
-}
-
-func New(opts ...MosaicOption) *Mosaic {
-	sm, err := storage.NewStorageMap(storage.WithTemp())
-	if err != nil {
-		panic(err)
-	}
+func New(ms *storage.MultiStorage, opts ...MosaicOption) *Mosaic {
 	m := &Mosaic{
-		ss:        sm.Array(),
+		ms:          ms,
 		max_threads: 4,
-		tempDir: os.TempDir(),
-		nameSize: 48,
+		tempDir:     os.TempDir(),
 	}
 	for _, o := range opts {
 		o(m)
@@ -78,30 +59,16 @@ func New(opts ...MosaicOption) *Mosaic {
 	return m
 }
 
-func (m *Mosaic) getMosaic() []*Chunk {
-	chunks := []*Chunk{}
-	for i := 0; i < len(m.ss); i++ {
-		c := NewChunk(i, GetFilename(m.nameSize / 2))
-		c.filename = m.tempDir + "/" + c.Name
-		c.Targets = m.ss
-		for _, s := range m.ss {
-			c.status[s.Name()] = STATE_MISSING
-		}
-		chunks = append(chunks, c)
-	}
-	return chunks
-}
-
-func (m *Mosaic) getTarget(chunks []*Chunk) (*Chunk, storage.Storage) {
+func (m *Mosaic) getTarget(chunks []*Chunk) (*Chunk, string) {
 	for _, c := range chunks {
-		for _, s := range m.ss {
-			status, ok := c.status[s.Name()]
+		for _, nn := range m.ms.Names() {
+			status, ok := c.status[nn]
 			if ok && status == STATE_MISSING {
-				return c, s
+				return c, nn
 			}
 		}
 	}
-	return nil, nil
+	return nil, ""
 }
 
 func (m *Mosaic) isComplete(chunks []*Chunk) (bool, bool) {
@@ -123,84 +90,84 @@ func (m *Mosaic) isComplete(chunks []*Chunk) (bool, bool) {
 	return true, completed
 }
 
+func (m *Mosaic) uploadChunk(c *Chunk, sName string) {
+	c.err = nil
+	log.Debugf("uploading of chunk %s from file %s ...", c.Name, c.filename)
+	c.Checksum, c.err = enigma.GetFileHash(c.filename)
+	if c.err == nil {
+		c.err = m.ms.Upload(sName, c.filename, c.Name)
+	}
+}
+
 func (m *Mosaic) download(chunk *Chunk) error {
-	log.Debugf("downloading chunk %s", chunk.Name)
-	for _, s := range m.ss {
-		chunk.download(s)
-		if chunk.err != nil {
-			log.Errorf("failed download chunk %s from %s -> %v", chunk.Name, s.Name(), chunk.err)
+	for _, sName := range m.ms.Names() {
+		log.Debugf("downloading of chunk %s to %s ...", chunk.Name, chunk.filename)
+		ck, err := m.ms.Download(sName, chunk.Name, chunk.filename)
+		if err == nil {
+			if len(chunk.Checksum) > 0 {
+				if chunk.Checksum == ck {
+					return nil
+				} else {
+					log.Errorf("failed download chunk %s from %s -> expected hash %s not %s", chunk.Name, sName, chunk.Checksum, ck)
+				}
+			} else {
+				// checksum check only if c.Checksum is set
+				// Indeed, Table Of Content cannot have c.Checksum set
+				return nil
+			}
 		} else {
-			return nil
+			log.Errorf("failed download chunk %s from %s -> %v", chunk.Name, sName, chunk.err)
 		}
 	}
 	return fmt.Errorf("failed to download chunk %s from all targets", chunk.Name)
 }
 
-func (m *Mosaic) upload(chunks []*Chunk, filename string) ([]*Chunk, error) {
-	chunkFiles := []string{}
-	for _, c := range chunks {
-		chunkFiles = append(chunkFiles, c.filename)
-	}
-	err := dust.SplitFile(filename, chunkFiles)
-	if err != nil {
-		return nil, err
-	}
+func (m *Mosaic) Upload(chunks []*Chunk) error {
 	log.Debugf("uploading [%v] chunks", len(chunks))
+	for _, c := range chunks {
+		for _, nn := range m.ms.Names() {
+			c.status[nn] = STATE_MISSING
+		}
+	}
 	for {
 		end, completed := m.isComplete(chunks)
 		if end {
 			if completed {
-				return chunks, nil
+				return nil
 			} else {
-				return chunks, fmt.Errorf("failed to upload %s", filename)
+				return fmt.Errorf("failed to upload chunks")
 			}
 		}
 		var wg sync.WaitGroup
 		for i :=0; i < m.max_threads; i++ {
-			c, target := m.getTarget(chunks)
-			if target != nil {
+			c, sName := m.getTarget(chunks)
+			if c != nil && sName != "" {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					c.upload(target)
+					m.uploadChunk(c, sName)
 				}()
 				if c.err != nil {
-					return chunks, c.err
+					return c.err
 				}
-				c.status[target.Name()] = STATE_COMPLETED
-				log.Debugf("upload of chunk [%s] from [%s] completed", c.Name, target.Name())
+				c.status[sName] = STATE_COMPLETED
+				log.Debugf("upload of chunk [%s] from [%s] completed", c.Name, sName)
 			}
 		}
 		wg.Wait()
 	}
 }
 
-func (m *Mosaic) Upload(filename string) ([]*Chunk, error) {
-	chunks := m.getMosaic()
-	return m.upload(chunks, filename)
-}
-
-func (m *Mosaic) UploadWithChunks(chunks []*Chunk, filename string) error {
-	for _, c := range chunks {
-		for _, s := range m.ss {
-			c.status[s.Name()] = STATE_MISSING
-		}
-	}
-	_, err := m.upload(chunks, filename)
-	return err
-}
-
-func (m *Mosaic) Download(chunks []*Chunk, filename string) error {
+func (m *Mosaic) Download(chunks []*Chunk) error {
 	log.Debugf("downloading [%v] chunks", len(chunks))
 	for _, c := range chunks {
+		if c.filename == "" {
+			c.filename =m.tempDir + "/" + c.Name
+		}
 		err := m.download(c)
 		if err != nil {
 			return err
 		}
 	}
-	chunkFiles := []string{}
-	for _, c := range chunks {
-		chunkFiles = append(chunkFiles, c.filename)
-	}
-	return dust.MergeFile(chunkFiles, filename)
+	return nil
 }

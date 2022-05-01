@@ -1,0 +1,29 @@
+<diagram program="umletino" version="14.4.0-SNAPSHOT"><zoom_level>10</zoom_level><element><id>UMLClass</id><coordinates><x>59</x><y>70</y><w>210</w><h>110</h></coordinates><panel_attributes>&lt;&lt;Struct&gt;&gt;
+MultiStorage
+Package::Storage
+--
+--
+Names(): []string
+Download(sName, name, filename): (hash, error)
+Upload(sName, filename, name) error
+--
+Responsibilities</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>339</x><y>70</y><w>210</w><h>110</h></coordinates><panel_attributes>&lt;&lt;Interface&gt;&gt;
+Storage
+Package::Storage
+--
+--
+Name(): string
+Download(name, filename) (hash, error)	
+Upload(filename string, name string) error
+--
+Responsibilities
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>259</x><y>110</y><w>100</w><h>30</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;80;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>59</x><y>250</y><w>210</w><h>110</h></coordinates><panel_attributes>&lt;&lt;Struct&gt;&gt;
+Kirinuki
+Package::Kirinuki
+--
+--
+Names(): []string
+Download(sName, name, filename): (hash, error)
+Upload(sName, filename, name) error
+--
+Responsibilities</panel_attributes><additional_attributes></additional_attributes></element></diagram>

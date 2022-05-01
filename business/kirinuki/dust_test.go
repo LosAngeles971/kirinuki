@@ -14,16 +14,11 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package dust
+package kirinuki
 
 import (
 	_ "embed"
-	"io/ioutil"
-	"os"
 	"testing"
-
-	"github.com/LosAngeles971/kirinuki/business/enigma"
-	"github.com/sirupsen/logrus"
 )
 
 type split_test struct {
@@ -67,41 +62,4 @@ func TestSplitData(t *testing.T) {
 			}
 		}
 	}
-}
-
-func TestSplitFile(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	base := os.TempDir() + "/dust"
-	_ = os.Mkdir(base, os.ModePerm)
-	sFile := base + "/dust.png" 
-	tFile := base + "/dust0.png" 
-	err := ioutil.WriteFile(sFile, test_file1, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	chunkFiles := []string{
-		base + "/dust1.png",
-		base + "/dust2.png",
-		base + "/dust3.png",
-	}
-	err = SplitFile(sFile, chunkFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = MergeFile(chunkFiles, tFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h1, err := enigma.GetFileHash(sFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h2, err := enigma.GetFileHash(tFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h1 != h2 {
-		t.Fatalf("mismatch %s - %s", h1, h2)
-	}
-	os.Remove(base)
 }

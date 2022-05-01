@@ -18,20 +18,15 @@ package toc
 
 import (
 	_ "embed"
-	"os"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
-	"github.com/LosAngeles971/kirinuki/business/mosaic"
-	"github.com/sirupsen/logrus"
+	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 func TestTOC(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	base := os.TempDir() + "/toc"
-	_ = os.Mkdir(base, os.ModePerm)
-	
-	toc, err :=	New()
+	ms := internal.GetStorage("toc", t)
+	toc, err :=	New(ms, WithTempDir(internal.GetTmp()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,18 +35,17 @@ func TestTOC(t *testing.T) {
 	if !ok {
 		t.Fatal("failed add")
 	}
-	tocFile := base + "/" + mosaic.GetFilename(24)
-	err = toc.Save(tocFile)
+	err = toc.Store(internal.Test_email, internal.Test_password)
 	if err != nil {
 		t.Fatal(err)
 	}
-	toc2, err := New(WithFilename(tocFile))
+	toc.Files = nil
+	err = toc.Load(internal.Test_email, internal.Test_password)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ok = toc2.Exist("test")
-	if !ok {
+	if !toc.Exist("test") {
 		t.Fatalf("missed %s", "test")
 	}
-	os.RemoveAll(base)
+	internal.Clean("toc")
 }

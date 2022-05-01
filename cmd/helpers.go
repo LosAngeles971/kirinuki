@@ -26,18 +26,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func getStorageMap() *storage.StorageMap {
+func getStorageMap() *storage.MultiStorage {
 	log.Debugf("getting storage from config file %s", storageMap)
 	data, err := ioutil.ReadFile(storageMap)
 	if err != nil {
 		log.Fatalf("cannot load storage map from file %s", storageMap)
 	}
-	var sm *storage.StorageMap
+	var sm *storage.MultiStorage
 	var err2 error
 	if strings.HasSuffix(storageMap, ".yml") || strings.HasSuffix(storageMap, ".yaml") {
-		sm, err2 = storage.NewStorageMap(storage.WithYAMLData(data))
+		sm, err2 = storage.NewMultiStorage(storage.WithYAMLData(data))
 	} else {
-		sm, err2 = storage.NewStorageMap(storage.WithJSONData(data))
+		sm, err2 = storage.NewMultiStorage(storage.WithJSONData(data))
 	}
 	if err2 != nil {
 		log.Fatalf("storage map file %s is corrupted or invalid, err = %v", storageMap, err)

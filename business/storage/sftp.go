@@ -127,6 +127,7 @@ func (s SFTP) Put(filename string, data []byte) error {
 }
 
 func (s SFTP) Download(name string, filename string) (string, error) {
+	DeleteLocalFile(filename)
 	sftpClient, err := s.getClient()
 	if err != nil {
 		return "", fmt.Errorf("failed to connect [%v]", err)

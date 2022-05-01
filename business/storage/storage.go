@@ -16,14 +16,6 @@
  */
 package storage
 
-import (
-	"fmt"
-
-	"github.com/graymeta/stow/local"
-	"github.com/graymeta/stow/s3"
-	"github.com/graymeta/stow/sftp"
-)
-
 type Storage interface {
 	Name() string
 	Get(name string) ([]byte, error)
@@ -36,16 +28,4 @@ type Storage interface {
 type ConfigItem struct {
 	Type string            `yaml:"type" json:"type"`
 	Cfg  map[string]string `yaml:"config" json:"config"`
-}
-
-// newStorage creates a new Storage object for a given specific storage type
-func newStorage(name string, ci ConfigItem) (Storage, error) {
-	switch ci.Type {
-	case local.Kind, s3.Kind:
-		return NewStowStorage(name, ci)
-	case sftp.Kind:
-		return NewSFTP(name, ci.Cfg), nil
-	default:
-		return nil, fmt.Errorf("unrecognized type of storage %s", ci.Type)
-	}
 }

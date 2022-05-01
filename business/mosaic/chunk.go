@@ -16,14 +16,6 @@
  */
 package mosaic
 
-import (
-	"fmt"
-
-	"github.com/LosAngeles971/kirinuki/business/enigma"
-	"github.com/LosAngeles971/kirinuki/business/storage"
-	log "github.com/sirupsen/logrus"
-)
-
 type Chunk struct {
 	Name        string   `json:"name"`
 	Real_size   int      `json:"real_size"`
@@ -32,7 +24,6 @@ type Chunk struct {
 	Checksum    string   `json:"checksum"`
 	err         error
 	filename    string
-	Targets     []storage.Storage
 	status      map[string]string
 }
 
@@ -57,23 +48,6 @@ func NewChunk(index int, name string, opts ...ChunkOption) *Chunk {
 	return c
 }
 
-func (c *Chunk) upload(target storage.Storage) {
-	c.err = nil
-	log.Debugf("uploading of chunk %s from file %s ...", c.Name, c.filename)
-	c.Checksum, c.err = enigma.GetFileHash(c.filename)
-	if c.err == nil {
-		c.err = target.Upload(c.filename, c.Name)
-	}
-}
-
-func (c *Chunk) download(target storage.Storage) {
-	log.Debugf("downloading of chunk %s to %s ...", c.Name, c.filename)
-	c.err = nil
-	var ck string
-	ck, c.err = target.Download(c.Name, c.filename)
-	if c.err == nil && len(c.Checksum) > 0 && c.Checksum != ck {
-		// checksum check only if c.Checksum is set
-		// Indeed, Table Of Content cannot have c.Checksum set
-		c.err = fmt.Errorf("downloading chunk %s expected hash %s not %s", c.Name, c.Checksum, ck)
-	}
+func (c *Chunk) GetFilename() string {
+	return c.filename
 }

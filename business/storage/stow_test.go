@@ -36,11 +36,11 @@ var localFile []byte
 func doTest(sName string, sFile []byte, t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 	hh := enigma.GetHash(sftpFile)
-	sm, err := NewStorageMap(WithJSONData(sFile))
+	sm, err := NewMultiStorage(WithJSONData(sFile))
 	if err != nil {
 		t.Fatalf("failed storage map init -> %v", err)
 	}
-	s, err := sm.Get(sName)
+	s, err := sm.get(sName)
 	if err != nil {
 		t.Fatalf("failed to ge storage %s -> %v", sName, err)
 	}

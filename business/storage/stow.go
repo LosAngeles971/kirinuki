@@ -111,6 +111,7 @@ func (s StowStorage) Put(name string, data []byte) error {
 }
 
 func (s StowStorage) Download(name string, filename string) (string, error) {
+	DeleteLocalFile(filename)
 	loc, err := stow.Dial(s.kind, s.cfg)
 	if err != nil {
 		return "", err
@@ -120,6 +121,7 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get container %s -> %v", s.container, err)
 	}
+	log.Debugf("storage %s is downloading %s/%s to %s", s.name, s.container, name, filename)
 	i, err := c.Item(name)
 	if err != nil {
 		return "", err
