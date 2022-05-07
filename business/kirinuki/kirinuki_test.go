@@ -17,10 +17,6 @@
 package kirinuki
 
 import (
-	"crypto/rand"
-	_ "embed"
-	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/enigma"
@@ -39,19 +35,16 @@ func TestSplitFile(t *testing.T) {
 	}
 	splitFile := internal.GetTmp() + "/split.png" 
 	mergeFile := internal.GetTmp() + "/merge.png" 
-	err := ioutil.WriteFile(splitFile, test_file1, 0755)
+	err := internal.CreateFile(splitFile, 100000)
 	if err != nil {
 		t.Fatal(err)
 	}
+	h1, _ := enigma.GetFileHash(splitFile)
 	err = k.splitFile(splitFile, file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = k.mergeChunks(file, mergeFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h1, err := enigma.GetFileHash(splitFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,18 +60,13 @@ func TestSplitFile(t *testing.T) {
 
 func TestIO(t *testing.T) {
 	internal.Setup()
-	size := 50000
-	data := make([]byte, size)
-	if _, err := io.ReadFull(rand.Reader, data); err != nil {
-		panic(err.Error())
-	}
-	checksum := enigma.GetHash(data)
 	name := "source"
 	fName := internal.GetTmp() + "/" + name
-	err := ioutil.WriteFile(fName, data, 0755)
+	err := internal.CreateFile(fName, 100000)
 	if err != nil {
 		t.Fatal(err)
 	}
+	checksum, _ := enigma.GetFileHash(fName)
 	k := New(storage.GetTmp("kirinuki"), WithTempDir(internal.GetTmp()))
 	file := NewKirinuki(name)
 	err = k.Upload(fName, file)

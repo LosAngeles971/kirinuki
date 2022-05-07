@@ -35,7 +35,7 @@ Usage:
 		}
 		err = g.Upload(filename, name, overwrite)
 		if err != nil {
-			log.Fatalf("failed upload [%v]", name, err)
+			log.Fatalf("failed upload [%v]", err)
 		}
 		err = g.Logout()
 		if err != nil {

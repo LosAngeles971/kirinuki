@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"crypto/rand"
+	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -23,4 +26,12 @@ func Clean(tDir string) {
 
 func GetTmp() string {
 	return os.TempDir() + "/tmp"
+}
+
+func CreateFile(sFile string, size int) error {
+	data := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(sFile, data, 0755)
 }

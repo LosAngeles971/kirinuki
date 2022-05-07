@@ -29,11 +29,15 @@ Usage:
 	kirinuki create`,
 	Run: func(cmd *cobra.Command, args []string) {
 		g := getGateway(email, askPassword())
-		err := g.CreateTableOfContent()
+		err := g.SetEmptyTableOfContent()
 		if err != nil {
-			log.Fatalf("failed to create new table of content due to %v", err)
+			log.Fatalf("failed to create new table of content -> %v", err)
 		}
-		log.Infof("table of content successfully created for %s", email)
+		err = g.Logout()
+		if err != nil {
+			log.Fatalf("failed to logout -> %v", err)
+		}
+		log.Infof("table of content successfully created [%s]", email)
 	},
 }
 
