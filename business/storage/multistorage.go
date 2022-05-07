@@ -19,6 +19,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
@@ -179,4 +180,15 @@ func (m *MultiStorage) Upload(sName string, filename string, name string) error 
 		return nil
 	}
 	return ss.Upload(filename, name)
+}
+
+func GetTmp(tDir string) *MultiStorage {
+	base := os.TempDir() + "/" + tDir
+	if _, err := os.Stat(base); err == nil {
+		os.RemoveAll(base)
+	}
+	_ = os.Mkdir(base, os.ModePerm)
+	sm, _ := NewMultiStorage()
+	sm.AddLocal(tDir, base)
+	return sm
 }

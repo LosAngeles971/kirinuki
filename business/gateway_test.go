@@ -25,8 +25,8 @@ import (
 
 	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
+	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/LosAngeles971/kirinuki/internal"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -35,7 +35,8 @@ const (
 
 // TestSession tests the creation, alteration, storing and re-opening of a session
 func TestSession(t *testing.T) {
-	sm := internal.GetStorage("session", t)
+	internal.Setup()
+	sm := storage.GetTmp("session")
 	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm), WithTemp(internal.GetTmp()))
 	if err != nil {
 		t.Fatal(err)
@@ -67,9 +68,9 @@ func TestSession(t *testing.T) {
 	internal.Clean("session")
 }
 
-func TestPutGet(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	sm := internal.GetStorage("gateway", t)
+func TestIO(t *testing.T) {
+	internal.Setup()
+	sm := storage.GetTmp("gateway")
 	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm), WithTemp(internal.GetTmp()))
 	if err != nil {
 		t.Fatal(err)
@@ -86,8 +87,8 @@ func TestPutGet(t *testing.T) {
 			panic(err.Error())
 		}
 		checksum := enigma.GetHash(data)
-		fName := internal.GetTmp() + "/" + kirinuki.GetFilename(24)
 		name := fmt.Sprintf("testfile%v", i)
+		fName := internal.GetTmp() + "/" + name
 		err = ioutil.WriteFile(fName, data, 0755)
 		if err != nil {
 			t.Fatal(err)
@@ -108,10 +109,10 @@ func TestPutGet(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		dName := internal.GetTmp() + "/" + kirinuki.GetFilename(24)
+		dName := internal.GetTmp() + "/" + fmt.Sprintf("d_testfile%v", i)
 		err = g.Download(name, dName)
 		if err != nil {
-			t.Fatalf("failed download %s -> %v", name, err)
+			t.Fatalf("failed download %s to local filename %s -> %v", name, dName, err)
 		}
 		dChecksum, err := enigma.GetFileHash(dName)
 		if err != nil {

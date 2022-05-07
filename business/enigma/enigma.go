@@ -24,6 +24,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"io"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 
@@ -34,11 +35,11 @@ const (
 //const V1 byte = 0x1
 
 type Enigma struct {
-	keyString [key_size]byte
-	prefix    string
+	keyString   [key_size]byte
+	prefix      string
 	buffer_size int
-	iv_size int
-	hmacSize int
+	iv_size     int
+	hmacSize    int
 }
 
 type EnigmaOption func(*Enigma)
@@ -72,10 +73,10 @@ func WithEncodedkey(key string) EnigmaOption {
 
 func New(opts ...EnigmaOption) *Enigma {
 	e := &Enigma{
-		prefix: "Kirinuki",
+		prefix:      "Kirinuki",
 		buffer_size: 16 * 1024,
-		iv_size: 16,
-		hmacSize: sha512.Size,
+		iv_size:     16,
+		hmacSize:    sha512.Size,
 	}
 	for _, opt := range opts {
 		opt(e)
@@ -83,7 +84,7 @@ func New(opts ...EnigmaOption) *Enigma {
 	return e
 }
 
-func (e *Enigma) Encrypt(data []byte) ([]byte, error) {
+func (e *Enigma) EncryptData(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.keyString[:])
 	if err != nil {
 		return []byte{}, err
@@ -100,7 +101,7 @@ func (e *Enigma) Encrypt(data []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func (e *Enigma) Decrypt(enc []byte) ([]byte, error) {
+func (e *Enigma) DecryptData(enc []byte) ([]byte, error) {
 	//Create a new Cipher Block from the key
 	block, err := aes.NewCipher(e.keyString[:])
 	if err != nil {
@@ -128,57 +129,83 @@ func (e *Enigma) GetEncodedKey() string {
 }
 
 func (e *Enigma) EncryptFile(sFile string, tFile string) error {
-    in, err := os.Open(sFile)
-    if err != nil { 
-		return err 
+	log.Debugf("encrypting %s to %s ...", sFile, tFile)
+	in, err := os.Open(sFile)
+	if err != nil {
+		return err
 	}
-    defer in.Close()
-    out, err := os.Create(tFile)
-    if err != nil { 
-		return err 
+	defer in.Close()
+	out, err := os.Create(tFile)
+	if err != nil {
+		return err
 	}
-    defer out.Close()
-    inBuf := make([]byte, e.buffer_size)
-    for {
-        n, err := in.Read(inBuf)
+	defer out.Close()
+	block, err := aes.NewCipher(e.keyString[:])
+	if err != nil {
+		return err
+	}
+	iv := make([]byte, block.BlockSize())
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		log.Fatal(err)
+	}
+	stream := cipher.NewCTR(block, iv)
+	inBuf := make([]byte, e.buffer_size)
+	for {
+		n, err := in.Read(inBuf)
 		if err == io.EOF {
+			out.Write(iv)
 			return nil
 		}
-        if err != nil && err != io.EOF { 
-			return err 
-		}
-        outBuf, err := e.Encrypt(inBuf[:n])
-        if err != nil {
+		if err != nil && err != io.EOF {
 			return err
 		}
-        out.Write(outBuf)
-    }
+		stream.XORKeyStream(inBuf, inBuf[:n])
+		out.Write(inBuf[:n])
+	}
 }
 
 func (e *Enigma) DecryptFile(sFile string, tFile string) error {
+	log.Debugf("decrypting %s to %s ...", sFile, tFile)
 	in, err := os.Open(sFile)
-    if err != nil { 
-		return err 
+	if err != nil {
+		return err
 	}
-    defer in.Close()
-    out, err := os.Create(tFile)
-    if err != nil { 
-		return err 
+	defer in.Close()
+	out, err := os.Create(tFile)
+	if err != nil {
+		return err
 	}
-    defer out.Close()
-    inBuf := make([]byte, e.buffer_size)
-    for {
-        n, err := in.Read(inBuf)
+	defer out.Close()
+	block, err := aes.NewCipher(e.keyString[:])
+	if err != nil {
+		return err
+	}
+	fi, err := in.Stat()
+	if err != nil {
+		return err
+	}
+
+	iv := make([]byte, block.BlockSize())
+	msgLen := fi.Size() - int64(len(iv))
+	_, err = in.ReadAt(iv, msgLen)
+	if err != nil {
+		return err
+	}
+	stream := cipher.NewCTR(block, iv)
+	inBuf := make([]byte, e.buffer_size)
+	for {
+		n, err := in.Read(inBuf)
 		if err == io.EOF {
 			return nil
 		}
-        if err != nil && err != io.EOF { 
-			return err 
-		}
-        outBuf, err := e.Decrypt(inBuf[:n])
-        if err != nil {
+		if err != nil && err != io.EOF {
 			return err
 		}
-        out.Write(outBuf)
-    }
+		if n > int(msgLen) {
+			n = int(msgLen)
+		}
+		msgLen -= int64(n)
+		stream.XORKeyStream(inBuf, inBuf[:n])
+		out.Write(inBuf[:n])
+	}
 }

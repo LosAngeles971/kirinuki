@@ -17,17 +17,20 @@
 package kirinuki
 
 import (
+	"crypto/rand"
 	_ "embed"
+	"io"
 	"io/ioutil"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/mosaic"
+	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 func TestSplitFile(t *testing.T) {
-	k := New(internal.GetStorage("split", t))
+	k := New(storage.GetTmp("split"))
 	file := NewKirinuki("split-merge")
 	file.Chunks = []*mosaic.Chunk{
 		mosaic.NewChunk(1, "c1", mosaic.WithFilename(internal.GetTmp() + "/split1")),
@@ -63,21 +66,36 @@ func TestSplitFile(t *testing.T) {
 }
 
 func TestIO(t *testing.T) {
-	k := New(internal.GetStorage("kirinuki", t))
-	sourceFile := internal.GetTmp() + "/source.png" 
-	err := ioutil.WriteFile(sourceFile, test_file1, 0755)
+	internal.Setup()
+	size := 50000
+	data := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+		panic(err.Error())
+	}
+	checksum := enigma.GetHash(data)
+	name := "source"
+	fName := internal.GetTmp() + "/" + name
+	err := ioutil.WriteFile(fName, data, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	file := NewKirinuki("io")
-	err = k.Upload(sourceFile, file)
+	k := New(storage.GetTmp("kirinuki"), WithTempDir(internal.GetTmp()))
+	file := NewKirinuki(name)
+	err = k.Upload(fName, file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	destFile := internal.GetTmp() + "/dest.png" 
 	err = k.Download(file, destFile)
 	if err != nil {
+		t.Fatalf("download failed -> %v", err)
+	}
+	h, err := enigma.GetFileHash(destFile)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if h != checksum {
+		t.Fatalf("wrong hash %s instead of %s", h, checksum)
 	}
 	internal.Clean("kirinuki")
 }

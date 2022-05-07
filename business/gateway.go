@@ -151,7 +151,7 @@ func (g *Gateway) Upload(filename string, name string, overwrite bool) error {
 		return fmt.Errorf("file %s already exists", name)
 	}
 	f := kirinuki.NewKirinuki(name, kirinuki.WithRandomkey())
-	k := kirinuki.New(g.storage)
+	k := kirinuki.New(g.storage, kirinuki.WithTempDir(g.tempDir))
 	err := k.Upload(filename, f)
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func (g *Gateway) Download(name string, filename string) error {
 	if !ok {
 		return fmt.Errorf("file %s not present", name)
 	}
-	k := kirinuki.New(g.storage)
+	k := kirinuki.New(g.storage, kirinuki.WithTempDir(g.tempDir))
 	return k.Download(f, filename)
 }
 

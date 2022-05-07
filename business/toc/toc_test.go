@@ -21,11 +21,13 @@ import (
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
+	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 func TestTOC(t *testing.T) {
-	ms := internal.GetStorage("toc", t)
+	internal.Setup()
+	ms := storage.GetTmp("toc")
 	toc, err :=	New(ms, WithTempDir(internal.GetTmp()))
 	if err != nil {
 		t.Fatal(err)

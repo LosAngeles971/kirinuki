@@ -17,83 +17,35 @@
 package enigma
 
 import (
-	_ "embed"
+	"crypto/rand"
+	"io"
 	"io/ioutil"
-	"os"
 	"testing"
+
+	"github.com/LosAngeles971/kirinuki/internal"
 )
 
-const (
-	enigma_phrase = "Kirinuki is a secure password management software by LosAngeles971"
-	enigma_email  = "losangeles971@gmail.com"
-)
-
-func TestEncryptionWithMainKey(t *testing.T) {
-	e := New(WithMainkey(enigma_email, enigma_phrase))
-	plaintext := []byte(enigma_phrase)
-	encrypted, err := e.Encrypt(plaintext)
+func TestConfidentiality(t *testing.T) {
+	internal.Setup()
+	size := 50000
+	data := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+		panic(err.Error())
+	}
+	checksum := GetHash(data)
+	sFile := internal.GetTmp() + "/plain.png"
+	err := ioutil.WriteFile(sFile, data, 0755)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decrypted, err := e.Decrypt(encrypted)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text2 := string(decrypted)
-	if string(plaintext) != text2 {
-		t.FailNow()
-	}
-}
-
-func TestEncryptionWithRandomkey(t *testing.T) {
-	e := New(WithRandomkey())
-	plaintext := []byte(enigma_phrase)
-	encrypted, err := e.Encrypt(plaintext)
-	if err != nil {
-		t.Fatal(err)
-	}
-	decrypted, err := e.Decrypt(encrypted)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text2 := string(decrypted)
-	if string(plaintext) != text2 {
-		t.FailNow()
-	}
-}
-
-func TestEncryptionWithEncodedkey(t *testing.T) {
-	e1 := New(WithRandomkey())
-	key := e1.GetEncodedKey()
-	plaintext := []byte(enigma_phrase)
-	encrypted, err := e1.Encrypt(plaintext)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e2 := New(WithEncodedkey(key))
-	decrypted, err := e2.Decrypt(encrypted)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text2 := string(decrypted)
-	if string(plaintext) != text2 {
-		t.FailNow()
-	}
-}
-
-func TestEncryptDecryptFile(t *testing.T) {
-	base := os.TempDir() + "/enigma"
-	_ = os.Mkdir(base, os.ModePerm)
-	sFile := base + "/plain.png"
-	tFile := base + "/crypted.png"
-	ttFile := base + "/decrypted.png"
-	err := ioutil.WriteFile(sFile, hFile, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tFile := internal.GetTmp() + "/crypted.png"
+	ttFile := internal.GetTmp() + "/decrypted.png"
 	h1, err := GetFileHash(sFile)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if h1 != checksum {
+		t.Fatalf("file hash different from data hash %s - %s", checksum, h1)
 	}
 	e := New(WithRandomkey())
 	err = e.EncryptFile(sFile, tFile)
@@ -111,5 +63,4 @@ func TestEncryptDecryptFile(t *testing.T) {
 	if h1 != h2 {
 		t.Fatalf("mismatch %s %s", h1, h2)
 	}
-	os.Remove(base)
 }

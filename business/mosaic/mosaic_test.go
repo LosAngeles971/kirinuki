@@ -21,8 +21,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/LosAngeles971/kirinuki/internal"
 	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 //go:embed test_file1.png
@@ -30,7 +31,8 @@ var test_file1 []byte
 
 // TestMosaic verifies upload and download of Kirinuki files
 func TestMosaic(t *testing.T) {
-	sm := internal.GetStorage("mosaic", t)
+	internal.Setup()
+	sm := storage.GetTmp("mosaic")
 	sChunk := NewChunk(1, "file", WithFilename(internal.GetTmp() + "/tobe_uploaded"))
 	tChunk := NewChunk(1, "file", WithFilename(internal.GetTmp() + "/tobe_downloaded"))
 	err := ioutil.WriteFile(sChunk.filename, test_file1, 0755)
