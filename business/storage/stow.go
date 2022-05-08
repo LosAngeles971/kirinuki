@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/LosAngeles971/kirinuki/business/enigma"
+	"github.com/LosAngeles971/kirinuki/internal"
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
@@ -131,7 +131,7 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 		return "", err
 	}
 	defer r.Close()
-	sh := enigma.NewStreamHash(r)
+	sh := internal.NewStreamHash(r)
 	// FIX ME: avoid to use memory
 	dd, err := ioutil.ReadAll(sh.GetReader())
 	if err != nil {

@@ -14,58 +14,35 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package enigma
+package internal
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"hash"
-	"io"
+	"bytes"
+	_ "embed"
+	"io/ioutil"
 	"os"
+	"testing"
 )
 
-type StreamHash struct {
-	r io.Reader
-	h hash.Hash
-	t io.Reader
-}
-
-func NewStreamHash(r io.Reader) StreamHash {
-	s := StreamHash{
-		r: r,
-		h: sha256.New(),
-	}
-	s.t = io.TeeReader(s.r, s.h)
-	return s
-}
-
-func (s StreamHash) GetReader() io.Reader {
-	return s.t
-}
-
-// func (h StreamHash) GetHashedStream(r io.Reader) io.Reader {
-// 	return io.TeeReader(r, h.hasher)
-// }
-
-func (s StreamHash) GetHash() string {
-	return hex.EncodeToString(s.h.Sum(nil))
-}
-
-func GetHash(data []byte) string {
-	h := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(h[:])
-}
-
-func GetFileHash(filename string) (string, error) {
-	f, err := os.Open(filename)
+func TestHashOfStream(t *testing.T) {
+	hFile := GetRndBytes(100000)
+	h1 := GetHash(hFile)
+	r := bytes.NewReader(hFile)
+	hr := NewStreamHash(r)
+	data, err := ioutil.ReadAll(hr.GetReader())
 	if err != nil {
-		return "", err
+		t.Fatal(err)
 	}
-	defer f.Close()
-	h := sha256.New()
-	n, err := io.Copy(h, f)
-	if err != nil || n == 0 {
-		return "", err
+	tFile := os.TempDir() + "/teefile.png"
+	err = ioutil.WriteFile(tFile, data, 0755)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	h2, err := GetFileHash(tFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 != h2 {
+		t.Fatalf("mimatch %s %s", h1, h2)
+	}
 }

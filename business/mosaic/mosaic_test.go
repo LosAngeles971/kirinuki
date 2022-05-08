@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/LosAngeles971/kirinuki/internal"
 )
@@ -39,11 +38,11 @@ func TestMosaic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h1, err := enigma.GetFileHash(sChunk.filename)
+	h1, err := internal.GetFileHash(sChunk.filename)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mm := New(sm, WithTempDir(internal.GetTmp()))
+	mm := New(sm)
 	err = mm.Upload([]*Chunk{sChunk})
 	if err != nil {
 		t.Fatalf("failed upload -> %v", err)
@@ -52,7 +51,7 @@ func TestMosaic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed download -> %v", err)
 	}
-	h2, err := enigma.GetFileHash(tChunk.filename)
+	h2, err := internal.GetFileHash(tChunk.filename)
 	if err != nil {
 		t.Fatal(err)
 	}

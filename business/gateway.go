@@ -32,11 +32,8 @@ import (
 type Gateway struct {
 	email           string
 	password        string
-	chunksForTOC    int
-	chunk_name_size int
 	toc             *toc.TableOfContent
 	storage         *storage.MultiStorage
-	tempDir         string
 }
 
 type GatewayOption func(*Gateway)
@@ -47,19 +44,10 @@ func WithStorage(m *storage.MultiStorage) GatewayOption {
 	}
 }
 
-func WithTemp(temp string) GatewayOption {
-	return func(s *Gateway) {
-		s.tempDir = temp
-	}
-}
-
 func New(email string, password string, opts ...GatewayOption) (*Gateway, error) {
 	g := &Gateway{
 		email:           email,
-		chunksForTOC:    3,
 		password:        password,
-		chunk_name_size: 48,
-		tempDir:         os.TempDir(),
 		toc:             nil,
 	}
 	for _, opt := range opts {
@@ -78,7 +66,7 @@ func New(email string, password string, opts ...GatewayOption) (*Gateway, error)
 
 func (g *Gateway) SetEmptyTableOfContent() error {
 	var err error
-	g.toc, err = toc.New(g.storage, toc.WithTempDir(g.tempDir))
+	g.toc, err = toc.New(g.storage)
 	if err != nil {
 		g.toc = nil
 		return err
@@ -150,9 +138,8 @@ func (g *Gateway) Upload(filename string, name string, overwrite bool) error {
 	if g.toc.Exist(name) && !overwrite {
 		return fmt.Errorf("file %s already exists", name)
 	}
-	f := kirinuki.NewKirinuki(name, kirinuki.WithRandomkey())
-	k := kirinuki.New(g.storage, kirinuki.WithTempDir(g.tempDir))
-	err := k.Upload(filename, f)
+	f := kirinuki.NewFile(name, kirinuki.WithRandomkey())
+	err := f.Upload(filename, g.storage)
 	if err != nil {
 		return err
 	}
@@ -170,8 +157,7 @@ func (g *Gateway) Download(name string, filename string) error {
 	if !ok {
 		return fmt.Errorf("file %s not present", name)
 	}
-	k := kirinuki.New(g.storage, kirinuki.WithTempDir(g.tempDir))
-	return k.Download(f, filename)
+	return f.Download(filename, g.storage)
 }
 
 func (g *Gateway) Info() error {

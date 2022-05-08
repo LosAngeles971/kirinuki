@@ -18,11 +18,10 @@ package mosaic
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
-	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/internal"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,22 +35,14 @@ const (
 type Mosaic struct {
 	ms          *storage.MultiStorage
 	max_threads int
-	tempDir     string
 }
 
 type MosaicOption func(*Mosaic)
-
-func WithTempDir(tempDir string) MosaicOption {
-	return func(m *Mosaic) {
-		m.tempDir = tempDir
-	}
-}
 
 func New(ms *storage.MultiStorage, opts ...MosaicOption) *Mosaic {
 	m := &Mosaic{
 		ms:          ms,
 		max_threads: 4,
-		tempDir:     os.TempDir(),
 	}
 	for _, o := range opts {
 		o(m)
@@ -93,7 +84,7 @@ func (m *Mosaic) isComplete(chunks []*Chunk) (bool, bool) {
 func (m *Mosaic) uploadChunk(c *Chunk, sName string) {
 	c.err = nil
 	log.Debugf("uploading of chunk %s from file %s ...", c.Name, c.filename)
-	c.Checksum, c.err = enigma.GetFileHash(c.filename)
+	c.Checksum, c.err = internal.GetFileHash(c.filename)
 	if c.err == nil {
 		c.err = m.ms.Upload(sName, c.filename, c.Name)
 	}
@@ -162,7 +153,7 @@ func (m *Mosaic) Download(chunks []*Chunk) error {
 	log.Debugf("downloading [%v] chunks", len(chunks))
 	for _, c := range chunks {
 		if c.filename == "" {
-			c.filename =m.tempDir + "/" + c.Name
+			c.filename = internal.GetTmp() + "/" + c.Name
 		}
 		err := m.download(c)
 		if err != nil {

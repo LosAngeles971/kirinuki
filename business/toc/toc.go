@@ -17,16 +17,18 @@
 package toc
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"regexp"
 	"time"
 
-	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
 	"github.com/LosAngeles971/kirinuki/business/mosaic"
 	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 const (
@@ -38,7 +40,6 @@ type TableOfContent struct {
 	Lastupdate int64            `json:"lastupdate"`
 	Files      []*kirinuki.File `json:"files"`
 	ms         *storage.MultiStorage
-	tempDir    string
 }
 
 type Option func(*TableOfContent) error
@@ -50,13 +51,6 @@ func WithFilename(sFile string) Option {
 			return err
 		}
 		return json.Unmarshal(data, &t)
-	}
-}
-
-func WithTempDir(tempDir string) Option {
-	return func(t *TableOfContent) error {
-		t.tempDir = tempDir
-		return nil
 	}
 }
 
@@ -131,8 +125,8 @@ func (t *TableOfContent) getCrushMap(email string, password string) []*mosaic.Ch
 	chunks := []*mosaic.Chunk{}
 	// create one chunk for every storage
 	for i := range t.ms.Names() {
-		name := enigma.GetHash([]byte(fmt.Sprintf("%s_%s_%v", email, password, i)))
-		c := mosaic.NewChunk(i, name, mosaic.WithFilename(t.tempDir+"/"+name))
+		name := internal.GetHash([]byte(fmt.Sprintf("%s_%s_%v", email, password, i)))
+		c := mosaic.NewChunk(i, name, mosaic.WithFilename(internal.GetTmp()+"/"+name))
 		// FIX ME: toc got a full mesh, if you add a new target you got some errors a new need a redistribution
 		c.TargetNames = t.ms.Names()
 		chunks = append(chunks, c)
@@ -140,32 +134,31 @@ func (t *TableOfContent) getCrushMap(email string, password string) []*mosaic.Ch
 	return chunks
 }
 
+func (t *TableOfContent) getKey(email string, password string) string {
+	key := sha256.Sum256([]byte(email + password))
+	return hex.EncodeToString(key[:])
+}
+
 func (t *TableOfContent) Store(email string, password string) error {
-	tocFile := t.tempDir + "/" + kirinuki.GetFilename(24)
+	tocFile := internal.GetTmp() + "/" + internal.GetFilename(24)
 	err := t.save(tocFile)
 	if err != nil {
 		return err
 	}
-	ee := enigma.New(enigma.WithMainkey(email, password))
-	key := ee.GetEncodedKey()
 	chunks := t.getCrushMap(email, password)
-	f := kirinuki.NewKirinuki(toc_name, kirinuki.WithEncodedKey(key), kirinuki.WithChunks(chunks))
-	kk := kirinuki.New(t.ms)
-	err = kk.Upload(tocFile, f)
+	f := kirinuki.NewFile(toc_name, kirinuki.WithEncodedKey(t.getKey(email, password)), kirinuki.WithChunks(chunks))
+	err = f.Upload(tocFile, t.ms)
 	storage.DeleteLocalFile(tocFile)
 	return err
 }
 
 func (t *TableOfContent) Load(email string, password string) error {
-	ee := enigma.New(enigma.WithMainkey(email, password))
-	key := ee.GetEncodedKey()
 	chunks := t.getCrushMap(email, password)
-	f := kirinuki.NewKirinuki(toc_name, kirinuki.WithEncodedKey(key), kirinuki.WithChunks(chunks))
-	tocFile := t.tempDir + "/" + kirinuki.GetFilename(24)
-	kk := kirinuki.New(t.ms)
-	err := kk.Download(f, tocFile)
+	f := kirinuki.NewFile(toc_name, kirinuki.WithEncodedKey(t.getKey(email, password)), kirinuki.WithChunks(chunks))
+	tocFile := internal.GetTmp() + "/" + internal.GetFilename(24)
+	err := f.Download(tocFile, t.ms)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to download toc -> %v", err)
 	}
 	data, err := ioutil.ReadFile(tocFile)
 	if err != nil {

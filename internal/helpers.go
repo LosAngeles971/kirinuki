@@ -14,53 +14,57 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package enigma
+package internal
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
-	"io/ioutil"
-	"testing"
-
-	"github.com/LosAngeles971/kirinuki/internal"
+	"os"
 )
 
-func TestConfidentiality(t *testing.T) {
-	internal.Setup()
-	size := 50000
-	data := make([]byte, size)
-	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+const (
+	KIRINUKI_TMP = "KIRINUKI_TMP"
+)
+
+func GetRndBytes(size int) []byte {
+	key := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, key); err != nil {
 		panic(err.Error())
 	}
-	checksum := GetHash(data)
-	sFile := internal.GetTmp() + "/plain.png"
-	err := ioutil.WriteFile(sFile, data, 0755)
+	return key
+}
+
+func GetFilename(size int) string {
+	dd := GetRndBytes(size)
+	return hex.EncodeToString(dd)
+}
+
+func GetTmp() string {
+	tmp, ok := os.LookupEnv(KIRINUKI_TMP)
+	if ok {
+		return tmp
+	} else {
+		return os.TempDir()
+	}
+}
+
+func GetHash(data []byte) string {
+	h := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(h[:])
+}
+
+func GetFileHash(filename string) (string, error) {
+	f, err := os.Open(filename)
 	if err != nil {
-		t.Fatal(err)
+		return "", err
 	}
-	tFile := internal.GetTmp() + "/crypted.png"
-	ttFile := internal.GetTmp() + "/decrypted.png"
-	h1, err := GetFileHash(sFile)
-	if err != nil {
-		t.Fatal(err)
+	defer f.Close()
+	h := sha256.New()
+	n, err := io.Copy(h, f)
+	if err != nil || n == 0 {
+		return "", err
 	}
-	if h1 != checksum {
-		t.Fatalf("file hash different from data hash %s - %s", checksum, h1)
-	}
-	e := New(WithRandomkey())
-	err = e.EncryptFile(sFile, tFile)
-	if err != nil {
-		t.Fatalf("encryption failed -> %v", err)
-	}
-	err = e.DecryptFile(tFile, ttFile)
-	if err != nil {
-		t.Fatalf("decryption failed -> %v", err)
-	}
-	h2, err := GetFileHash(ttFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h1 != h2 {
-		t.Fatalf("mismatch %s %s", h1, h2)
-	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

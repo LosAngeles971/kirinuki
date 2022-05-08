@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/LosAngeles971/kirinuki/business/enigma"
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
 	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/LosAngeles971/kirinuki/internal"
@@ -37,13 +36,13 @@ const (
 func TestSession(t *testing.T) {
 	internal.Setup()
 	sm := storage.GetTmp("session")
-	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm), WithTemp(internal.GetTmp()))
+	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm))
 	if err != nil {
 		t.Fatal(err)
 	}
 	g.SetEmptyTableOfContent()
 	kName := "test"
-	k := kirinuki.NewKirinuki(kName, kirinuki.WithRandomkey())
+	k := kirinuki.NewFile(kName, kirinuki.WithRandomkey())
 	// Adding something to the TableOfContent
 	if !g.toc.Add(k) {
 		t.Fatal("cannog add a kirinuki file")
@@ -71,7 +70,7 @@ func TestSession(t *testing.T) {
 func TestIO(t *testing.T) {
 	internal.Setup()
 	sm := storage.GetTmp("gateway")
-	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm), WithTemp(internal.GetTmp()))
+	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +85,7 @@ func TestIO(t *testing.T) {
 		if _, err := io.ReadFull(rand.Reader, data); err != nil {
 			panic(err.Error())
 		}
-		checksum := enigma.GetHash(data)
+		checksum := internal.GetHash(data)
 		name := fmt.Sprintf("testfile%v", i)
 		fName := internal.GetTmp() + "/" + name
 		err = ioutil.WriteFile(fName, data, 0755)
@@ -114,7 +113,7 @@ func TestIO(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed download %s to local filename %s -> %v", name, dName, err)
 		}
-		dChecksum, err := enigma.GetFileHash(dName)
+		dChecksum, err := internal.GetFileHash(dName)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -134,7 +133,7 @@ func TestIO(t *testing.T) {
 		t.Errorf("expected %v Kirinuki files not %v", test_files, n)
 	}
 	for i := 0; i < test_files; i++ {
-		name := fmt.Sprintf("test_file%v", i)
+		name := fmt.Sprintf("testfile%v", i)
 		f, err := g.Exist(name)
 		if err != nil {
 			t.Fatal(err)

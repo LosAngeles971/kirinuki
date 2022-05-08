@@ -23,8 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/LosAngeles971/kirinuki/business/enigma"
-	"github.com/sirupsen/logrus"
+	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 //go:embed minio.json
@@ -34,8 +33,8 @@ var minioFile []byte
 var localFile []byte
 
 func doTest(sName string, sFile []byte, t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	hh := enigma.GetHash(sftpFile)
+	internal.Setup()
+	hh := internal.GetHash(sftpFile)
 	sm, err := NewMultiStorage(WithJSONData(sFile))
 	if err != nil {
 		t.Fatalf("failed storage map init -> %v", err)
@@ -52,8 +51,8 @@ func doTest(sName string, sFile []byte, t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed get file [%v]", err)
 	}
-	if enigma.GetHash(dd) != hh {
-		t.Fatalf("expected hash %s not %s", hh, enigma.GetHash(dd))
+	if internal.GetHash(dd) != hh {
+		t.Fatalf("expected hash %s not %s", hh, internal.GetHash(dd))
 	}
 	f1 := fmt.Sprintf("%s/testfile", os.TempDir())
 	h1, err := s.Download("testfile", f1)
@@ -67,8 +66,8 @@ func doTest(sName string, sFile []byte, t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read file %s -> %v", f1, err)
 	}
-	if enigma.GetHash(df) != hh {
-		t.Fatalf("df - expected hash %s not %s", hh, enigma.GetHash(df))
+	if internal.GetHash(df) != hh {
+		t.Fatalf("df - expected hash %s not %s", hh, internal.GetHash(df))
 	}
 	err = s.Upload(f1, "testfile2")
 	if err != nil {
@@ -78,8 +77,8 @@ func doTest(sName string, sFile []byte, t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed get file [%v]", err)
 	}
-	if enigma.GetHash(du) != hh {
-		t.Fatalf("du - expcted hash %s not %s", hh, enigma.GetHash(du))
+	if internal.GetHash(du) != hh {
+		t.Fatalf("du - expcted hash %s not %s", hh, internal.GetHash(du))
 	}
 }
 

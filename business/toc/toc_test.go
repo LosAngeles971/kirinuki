@@ -28,11 +28,11 @@ import (
 func TestTOC(t *testing.T) {
 	internal.Setup()
 	ms := storage.GetTmp("toc")
-	toc, err :=	New(ms, WithTempDir(internal.GetTmp()))
+	toc, err :=	New(ms)
 	if err != nil {
 		t.Fatal(err)
 	}
-	k := kirinuki.NewKirinuki("test", kirinuki.WithRandomkey())
+	k := kirinuki.NewFile("test", kirinuki.WithRandomkey())
 	ok := toc.Add(k)
 	if !ok {
 		t.Fatal("failed add")
