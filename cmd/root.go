@@ -17,8 +17,7 @@
 package cmd
 
 import (
-	"os"
-
+	"github.com/LosAngeles971/kirinuki/ui"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -42,9 +41,9 @@ var rootCmd = &cobra.Command{
 	Short: "Kirinuki",
 	Long:  `Kirinuki.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Help()
-			os.Exit(0)
+		app := ui.Build()
+		if err := app.Run(); err != nil {
+				panic(err)
 		}
 	},
 	PersistentPreRun: setLog,

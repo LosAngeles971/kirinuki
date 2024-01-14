@@ -1,0 +1,15 @@
+[yellow]How to come back to this page[white]
+
+The [Esc] key always brings you here!
+
+[yellow]Mouse[white]
+
+You can you the mouse to click on buttons, menus, table's rows, etc.
+
+[yellow]Adding a new row to a table[white]
+
+When you are working with tables, if you want to add a new work you have to select the header row and press [ENTER].
+
+[yellow]Modifying a table's row[white]
+
+When you are working with tables, if you want to modify a row you have to select the row and press [ENTER].
