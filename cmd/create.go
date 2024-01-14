@@ -28,7 +28,7 @@ var createCmd = &cobra.Command{
 Usage:
 	kirinuki create`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g := getGateway(email, askPassword())
+		g := getGateway(email)
 		err := g.SetEmptyTableOfContent()
 		if err != nil {
 			log.Fatalf("failed to create new table of content -> %v", err)

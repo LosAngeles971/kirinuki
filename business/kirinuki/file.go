@@ -21,7 +21,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -32,47 +31,49 @@ import (
 
 	"github.com/LosAngeles971/kirinuki/business/mosaic"
 	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/LosAngeles971/kirinuki/internal"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	key_size    = 32
-	nameSize    = 24
-	buffer_size = 16 * 1024
-	iv_size     = 16
-	hmacSize    = sha512.Size
+	key_size    = 32        // size of the symmetric key
+	nameSize    = 24        // size of the files' names
+	buffer_size = 16 * 1024 // buffer's size during encryption/decryption of files
 )
 
+// File: it represents a single file into Kirinuki world
 type File struct {
-	Date         int64           `json:"date"`         // date of upload
-	Name         string          `json:"name"`         // name into the Table of Content
-	Chunks       []*mosaic.Chunk `json:"chunks"`       // chunks into the MultiStorage
-	Symmetrickey string          `json:"symmetrickey"` // encryption key
-	Checksum     string          `json:"checksum"`     // checksum of original file
+	Date         int64           `json:"date"`         // date of last upload
+	Name         string          `json:"name"`         // file's name
+	Chunks       []*mosaic.Chunk `json:"chunks"`       // list of file's chunks
+	Symmetrickey string          `json:"symmetrickey"` // symmetric encryption key used to encrypt the file
+	Checksum     string          `json:"checksum"`     // checksum of the original file
 }
 
 type FileOption func(*File)
 
+// Usage of a random generated symmetric key to encrypt the file
 func WithRandomkey() FileOption {
 	return func(f *File) {
 		f.setRandomKey()
 	}
 }
 
+// Usage of an already existent symmetric key (the table of content uses this option)
 func WithEncodedKey(key string) FileOption {
 	return func(k *File) {
 		k.Symmetrickey = key
 	}
 }
 
+// Usage of already existent chunks (table of content uses this option)
 func WithChunks(chunks []*mosaic.Chunk) FileOption {
 	return func(f *File) {
 		f.Chunks = chunks
 	}
 }
 
+// NewFile: it creates a new File into the world of Kirinuki
 func NewFile(name string, opts ...FileOption) *File {
 	k := &File{
 		Name: name,
@@ -84,11 +85,13 @@ func NewFile(name string, opts ...FileOption) *File {
 	return k
 }
 
+// this method is used to assign a random symmetric key to a File deserialized by the table of content
 func (f *File) setRandomKey() {
-	key := sha256.Sum256(internal.GetRndBytes(key_size))
+	key := sha256.Sum256(storage.GetRndBytes(key_size))
 	f.Symmetrickey = hex.EncodeToString(key[:])
 }
 
+// encrypting external file into external file using the file's symmetric key
 func (f *File) Encrypt(sFile string, tFile string) error {
 	log.Debugf("encrypting %s to %s ...", sFile, tFile)
 	key, err := hex.DecodeString(f.Symmetrickey)
@@ -129,6 +132,7 @@ func (f *File) Encrypt(sFile string, tFile string) error {
 	}
 }
 
+// decrypting external file into external file using the file's symmetric key
 func (f *File) Decrypt(sFile string, tFile string) error {
 	log.Debugf("decrypting %s to %s ...", sFile, tFile)
 	key, err := hex.DecodeString(f.Symmetrickey)
@@ -179,6 +183,7 @@ func (f *File) Decrypt(sFile string, tFile string) error {
 	}
 }
 
+// splitting of external file into chunks
 func (file *File) Split(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -209,6 +214,7 @@ func (file *File) Split(filename string) error {
 	return nil
 }
 
+// merging external chunks into external file
 func (file *File) Merge(filename string) error {
 	log.Debugf("merging #chunks %v to file %s [%s]...", len(file.Chunks), file.Name, filename)
 	f, err := os.Create(filename)
@@ -235,13 +241,14 @@ func (file *File) Merge(filename string) error {
 	return nil
 }
 
+// assigning storage targets to every chunk of the file
 func (f *File) setCrushMap(targets []string) {
 	log.Debugf("setting crush map for file %s ...", f.Name)
 	f.Chunks = []*mosaic.Chunk{}
 	// create a chunk for every available storage
 	for i := 0; i < len(targets); i++ {
-		name := internal.GetFilename(nameSize)
-		c := mosaic.NewChunk(i, name, mosaic.WithFilename(internal.GetTmp()+"/"+name))
+		name := storage.GetFilename(nameSize)
+		c := mosaic.NewChunk(i, name, mosaic.WithFilename(storage.GetTmp()+"/"+name))
 		c.TargetNames = targets
 		f.Chunks = append(f.Chunks, c)
 		log.Debugf("crush map for file %s chunks %v [%s] - size %v - #targets %v", f.Name, c.Index, c.Name, c.Real_size, len(c.TargetNames))
@@ -249,6 +256,7 @@ func (f *File) setCrushMap(targets []string) {
 	log.Debugf("crush map for file %s #chunks %v", f.Name, len(f.Chunks))
 }
 
+// uploading an external file to the storage
 func (f *File) Upload(filename string, ms *storage.MultiStorage) error {
 	log.Debugf("uploading file %s as %s to storage...", filename, f.Name)
 	// Table of Content comes with own key
@@ -256,12 +264,12 @@ func (f *File) Upload(filename string, ms *storage.MultiStorage) error {
 		f.setRandomKey()
 	}
 	var err error
-	f.Checksum, err = internal.GetFileHash(filename)
+	f.Checksum, err = storage.GetFileHash(filename)
 	if err != nil {
 		return err
 	}
 	log.Debugf("kirinuki file %s from %s for hash %s", f.Name, filename, f.Checksum)
-	ff := internal.GetTmp() + "/" + internal.GetFilename(nameSize)
+	ff := storage.GetTmp() + "/" + storage.GetFilename(nameSize)
 	err = f.Encrypt(filename, ff)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt file -> %v", err)
@@ -278,6 +286,7 @@ func (f *File) Upload(filename string, ms *storage.MultiStorage) error {
 	return err
 }
 
+// downloading an external file from the storage
 func (f *File) Download(filename string, ms *storage.MultiStorage) error {
 	log.Debugf("downloading file %s from storage to local file %s...", f.Name, filename)
 	mm := mosaic.New(ms)
@@ -285,7 +294,7 @@ func (f *File) Download(filename string, ms *storage.MultiStorage) error {
 	if err != nil {
 		return fmt.Errorf("failed download -> %v", err)
 	}
-	mergeFile := internal.GetTmp() + "/" + internal.GetFilename(nameSize)
+	mergeFile := storage.GetTmp() + "/" + storage.GetFilename(nameSize)
 	err = f.Merge(mergeFile)
 	if err != nil {
 		return fmt.Errorf("failed to merge chunks to %s -> %v", mergeFile, err)
@@ -298,7 +307,7 @@ func (f *File) Download(filename string, ms *storage.MultiStorage) error {
 	}
 	log.Debugf("decrypted local file %s to local file %s", mergeFile, filename)
 	if len(f.Checksum) > 0 {
-		h, err := internal.GetFileHash(filename)
+		h, err := storage.GetFileHash(filename)
 		if err != nil {
 			return err
 		}

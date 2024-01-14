@@ -1,3 +1,5 @@
+package toc
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,7 +16,6 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package toc
 
 import (
 	"crypto/sha256"
@@ -28,7 +29,6 @@ import (
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
 	"github.com/LosAngeles971/kirinuki/business/mosaic"
 	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/LosAngeles971/kirinuki/internal"
 )
 
 const (
@@ -125,8 +125,8 @@ func (t *TableOfContent) getCrushMap(email string, password string) []*mosaic.Ch
 	chunks := []*mosaic.Chunk{}
 	// create one chunk for every storage
 	for i := range t.ms.Names() {
-		name := internal.GetHash([]byte(fmt.Sprintf("%s_%s_%v", email, password, i)))
-		c := mosaic.NewChunk(i, name, mosaic.WithFilename(internal.GetTmp()+"/"+name))
+		name := storage.GetHash([]byte(fmt.Sprintf("%s_%s_%v", email, password, i)))
+		c := mosaic.NewChunk(i, name, mosaic.WithFilename(storage.GetTmp()+"/"+name))
 		// FIX ME: toc got a full mesh, if you add a new target you got some errors a new need a redistribution
 		c.TargetNames = t.ms.Names()
 		chunks = append(chunks, c)
@@ -140,7 +140,7 @@ func (t *TableOfContent) getKey(email string, password string) string {
 }
 
 func (t *TableOfContent) Store(email string, password string) error {
-	tocFile := internal.GetTmp() + "/" + internal.GetFilename(24)
+	tocFile := storage.GetTmp() + "/" + storage.GetFilename(24)
 	err := t.save(tocFile)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (t *TableOfContent) Store(email string, password string) error {
 func (t *TableOfContent) Load(email string, password string) error {
 	chunks := t.getCrushMap(email, password)
 	f := kirinuki.NewFile(toc_name, kirinuki.WithEncodedKey(t.getKey(email, password)), kirinuki.WithChunks(chunks))
-	tocFile := internal.GetTmp() + "/" + internal.GetFilename(24)
+	tocFile := storage.GetTmp() + "/" + storage.GetFilename(24)
 	err := f.Download(tocFile, t.ms)
 	if err != nil {
 		return fmt.Errorf("failed to download toc -> %v", err)

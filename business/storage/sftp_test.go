@@ -1,3 +1,5 @@
+package storage
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,16 +16,24 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package storage
 
 import (
 	_ "embed"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 //go:embed sftp.json
 var sftpFile []byte
 
 func TestSFTP(t *testing.T) {
-	doTest("sftp", sftpFile, t)
+	t.Skip("missing integration test")
+	sm, err := NewMultiStorage()
+	require.Nil(t, err)
+	err = sm.LoadByJSON(sftpFile)
+	require.Nil(t, err)
+	s, err := sm.get("sftp")
+	require.Nil(t, err)
+	doTargetStorageTest(t, s)
 }

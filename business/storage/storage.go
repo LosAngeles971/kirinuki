@@ -1,3 +1,5 @@
+package storage
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,18 +16,12 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package storage
 
+// Storage defines the interface of a generic storage target
 type Storage interface {
 	Name() string
 	Get(name string) ([]byte, error)
 	Put(name string, data []byte) error
 	Download(name string, filename string) (string, error) // save a file from target storage locally and computing the hash
 	Upload(filename string, name string) error
-}
-
-// ConfigItem contains configurations for a specific storage target
-type ConfigItem struct {
-	Type string            `yaml:"type" json:"type"`
-	Cfg  map[string]string `yaml:"config" json:"config"`
 }

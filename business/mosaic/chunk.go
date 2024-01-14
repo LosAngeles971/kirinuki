@@ -1,3 +1,5 @@
+package mosaic
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,8 +16,8 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package mosaic
 
+// Chunk: it represents a portion of a Kirinuki files
 type Chunk struct {
 	Name        string   `json:"name"`
 	Real_size   int      `json:"real_size"`
@@ -29,18 +31,20 @@ type Chunk struct {
 
 type ChunkOption func(*Chunk)
 
+// Setting the filename which contain the chunk's data
 func WithFilename(filename string) ChunkOption {
 	return func(s *Chunk) {
 		s.filename = filename
 	}
 }
 
+// NewChunk: it creates a new chunk with the index and name
 func NewChunk(index int, name string, opts ...ChunkOption) *Chunk {
 	c := &Chunk{
-		TargetNames: []string{},
-		Name:        name,
-		Index:       index,
-		status:      map[string]string{},
+		TargetNames: []string{},          // list of storages where the chunk's data is stored on
+		Name:        name,                // unique identifier of the chunk
+		Index:       index,               // chunk's position into the sequence of chunks which compose an entire Kirinuki file
+		status:      map[string]string{}, // a map of where the chunk's data has been successufully (or not) uploaded
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -48,6 +52,7 @@ func NewChunk(index int, name string, opts ...ChunkOption) *Chunk {
 	return c
 }
 
+// GetFilename: it returns the filename of chunk's data
 func (c *Chunk) GetFilename() string {
 	return c.filename
 }

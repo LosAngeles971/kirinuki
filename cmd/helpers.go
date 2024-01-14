@@ -1,3 +1,5 @@
+package cmd
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,11 +16,9 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package cmd
 
 import (
 	"io/ioutil"
-	"strings"
 
 	"github.com/LosAngeles971/kirinuki/business"
 	"github.com/LosAngeles971/kirinuki/business/storage"
@@ -32,20 +32,18 @@ func getStorageMap() *storage.MultiStorage {
 	if err != nil {
 		log.Fatalf("cannot load storage map from file %s", storageMap)
 	}
-	var sm *storage.MultiStorage
-	var err2 error
-	if strings.HasSuffix(storageMap, ".yml") || strings.HasSuffix(storageMap, ".yaml") {
-		sm, err2 = storage.NewMultiStorage(storage.WithYAMLData(data))
-	} else {
-		sm, err2 = storage.NewMultiStorage(storage.WithJSONData(data))
+	sm, err2 := storage.NewMultiStorage()
+	if err2 != nil {
+		log.Fatal(err)
 	}
+	err2 = sm.LoadByJSON(data)
 	if err2 != nil {
 		log.Fatalf("storage map file %s is corrupted or invalid, err = %v", storageMap, err)
 	}
 	return sm
 }
 
-func getGateway(email string, password string) *business.Gateway {
+func getGateway(email string) *business.Gateway {
 	g, err := business.New(email, askPassword(), business.WithStorage(getStorageMap()))
 	if err != nil {
 		log.Fatalf("gateway creation failed [%v]", err)

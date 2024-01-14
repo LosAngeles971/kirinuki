@@ -32,7 +32,7 @@ var findCmd = &cobra.Command{
 Usage:
 	kirinuki find --name <regex pattern>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g := getGateway(email, askPassword())
+		g := getGateway(email)
 		err := g.Login()
 		if err != nil {
 			log.Fatalf("login failed [%v]", err)

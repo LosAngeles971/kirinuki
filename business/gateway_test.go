@@ -1,3 +1,5 @@
+package business
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,7 +16,6 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package business
 
 import (
 	"crypto/rand"
@@ -25,7 +26,7 @@ import (
 
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
 	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/LosAngeles971/kirinuki/internal"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -34,9 +35,8 @@ const (
 
 // TestSession tests the creation, alteration, storing and re-opening of a session
 func TestSession(t *testing.T) {
-	internal.Setup()
-	sm := storage.GetTmp("session")
-	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm))
+	tsm := storage.NewTestLocalMultistorage("gateway")
+	g, err := New(storage.Test_email, storage.Test_password, WithStorage(tsm.GetMultiStorage()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,83 +64,53 @@ func TestSession(t *testing.T) {
 	if !g.toc.Exist(kName) {
 		t.Fatalf("missing kFile [%s]", kName)
 	}
-	internal.Clean("session")
+	tsm.Clean()
 }
 
 func TestIO(t *testing.T) {
-	internal.Setup()
-	sm := storage.GetTmp("gateway")
-	g, err := New(internal.Test_email, internal.Test_password, WithStorage(sm))
-	if err != nil {
-		t.Fatal(err)
-	}
+	tsm := storage.NewTestLocalMultistorage("gateway")
+	g, err := New(storage.Test_email, storage.Test_password, WithStorage(tsm.GetMultiStorage()))
+	require.Nil(t, err)
 	g.SetEmptyTableOfContent()
 	err = g.Logout()
-	if err != nil {
-		t.Fatalf("failed logout -> %v", err)
-	}
+	require.Nil(t, err)
 	for i := 0; i < test_files; i++ {
 		size := 50000
 		data := make([]byte, size)
-		if _, err := io.ReadFull(rand.Reader, data); err != nil {
-			panic(err.Error())
-		}
-		checksum := internal.GetHash(data)
+		_, err := io.ReadFull(rand.Reader, data)
+		require.Nil(t, err)
+		checksum := storage.GetHash(data)
 		name := fmt.Sprintf("testfile%v", i)
-		fName := internal.GetTmp() + "/" + name
+		fName := storage.GetTmp() + "/" + name
 		err = ioutil.WriteFile(fName, data, 0755)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		err = g.Login()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		err = g.Upload(fName, name, false)
-		if err != nil {
-			t.Errorf("failed upload %s due to %v", name, err)
-		}
+		require.Nil(t, err)
 		err = g.Logout()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, err)
 		err = g.Login()
-		if err != nil {
-			t.Fatal(err)
-		}
-		dName := internal.GetTmp() + "/" + fmt.Sprintf("d_testfile%v", i)
+		require.Nil(t, err)
+		dName := storage.GetTmp() + "/" + fmt.Sprintf("d_testfile%v", i)
 		err = g.Download(name, dName)
-		if err != nil {
-			t.Fatalf("failed download %s to local filename %s -> %v", name, dName, err)
-		}
-		dChecksum, err := internal.GetFileHash(dName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if checksum != dChecksum {
-			t.Fatalf("rebuild failed, expected hash [%v] not [%v]", checksum, dChecksum)
-		}
+		require.Nil(t, err, fmt.Sprintf("failed download %s to local filename %s -> %v", name, dName, err))
+		dChecksum, err := storage.GetFileHash(dName)
+		require.Nil(t, err)
+		require.Equal(t, dChecksum, checksum, fmt.Sprintf("rebuild failed, expected hash [%v] not [%v]", checksum, dChecksum))
 	}
 	err = g.Login()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	n, err := g.Size()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.Nil(t, err)
 	if n != test_files {
 		t.Errorf("expected %v Kirinuki files not %v", test_files, n)
 	}
 	for i := 0; i < test_files; i++ {
 		name := fmt.Sprintf("testfile%v", i)
 		f, err := g.Exist(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if f == nil {
-			t.Errorf("expected one found entry for %v", name)
-		}
+		require.Nil(t, err)
+		require.NotNil(t, f)
 	}
-	internal.Clean("gateway")
+	tsm.Clean()
 }

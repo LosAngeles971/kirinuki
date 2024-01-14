@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LosAngeles971/kirinuki/internal"
 	"github.com/pkg/sftp"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -144,7 +143,7 @@ func (s SFTP) Download(name string, filename string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	sh := internal.NewStreamHash(destFile)
+	sh := NewStreamHash(destFile)
 	n, err := io.Copy(f, sh.GetReader())
 	if err != nil || n == 0 {
 		return "", fmt.Errorf("transferred %v bytes -> %v", n, err)

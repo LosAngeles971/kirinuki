@@ -1,3 +1,5 @@
+package mosaic
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,14 +16,12 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package mosaic
 
 import (
 	"fmt"
 	"sync"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/LosAngeles971/kirinuki/internal"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -31,13 +31,14 @@ const (
 	STATE_MISSING   = "missing"
 )
 
-// Mosaic is in charge of providing upload/download functionalities for Kirinuki files
-type Mosaic struct {
-	ms          *storage.MultiStorage
-	max_threads int
-}
-
 type MosaicOption func(*Mosaic)
+
+// Mosaic is in charge of providing high level upload/download methods for Kirinuki files,
+// handling the splitting feature
+type Mosaic struct {
+	ms          *storage.MultiStorage // storage system used to handle Kirinuki files
+	max_threads int                   // maximum number of parallel threads for upload/download methods
+}
 
 func New(ms *storage.MultiStorage, opts ...MosaicOption) *Mosaic {
 	m := &Mosaic{
@@ -84,7 +85,7 @@ func (m *Mosaic) isComplete(chunks []*Chunk) (bool, bool) {
 func (m *Mosaic) uploadChunk(c *Chunk, sName string) {
 	c.err = nil
 	log.Debugf("uploading of chunk %s from file %s ...", c.Name, c.filename)
-	c.Checksum, c.err = internal.GetFileHash(c.filename)
+	c.Checksum, c.err = storage.GetFileHash(c.filename)
 	if c.err == nil {
 		c.err = m.ms.Upload(sName, c.filename, c.Name)
 	}
@@ -130,7 +131,7 @@ func (m *Mosaic) Upload(chunks []*Chunk) error {
 			}
 		}
 		var wg sync.WaitGroup
-		for i :=0; i < m.max_threads; i++ {
+		for i := 0; i < m.max_threads; i++ {
 			c, sName := m.getTarget(chunks)
 			if c != nil && sName != "" {
 				wg.Add(1)
@@ -153,7 +154,7 @@ func (m *Mosaic) Download(chunks []*Chunk) error {
 	log.Debugf("downloading [%v] chunks", len(chunks))
 	for _, c := range chunks {
 		if c.filename == "" {
-			c.filename = internal.GetTmp() + "/" + c.Name
+			c.filename = storage.GetTmp() + "/" + c.Name
 		}
 		err := m.download(c)
 		if err != nil {

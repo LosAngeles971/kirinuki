@@ -1,3 +1,5 @@
+package storage
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,57 +16,33 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package internal
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"hash"
 	"io"
-	"os"
 )
 
-const (
-	KIRINUKI_TMP = "KIRINUKI_TMP"
-)
-
-func GetRndBytes(size int) []byte {
-	key := make([]byte, size)
-	if _, err := io.ReadFull(rand.Reader, key); err != nil {
-		panic(err.Error())
-	}
-	return key
+type StreamHash struct {
+	r io.Reader
+	h hash.Hash
+	t io.Reader
 }
 
-func GetFilename(size int) string {
-	dd := GetRndBytes(size)
-	return hex.EncodeToString(dd)
+func NewStreamHash(r io.Reader) StreamHash {
+	s := StreamHash{
+		r: r,
+		h: sha256.New(),
+	}
+	s.t = io.TeeReader(s.r, s.h)
+	return s
 }
 
-func GetTmp() string {
-	tmp, ok := os.LookupEnv(KIRINUKI_TMP)
-	if ok {
-		return tmp
-	} else {
-		return os.TempDir()
-	}
+func (s StreamHash) GetReader() io.Reader {
+	return s.t
 }
 
-func GetHash(data []byte) string {
-	h := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(h[:])
-}
-
-func GetFileHash(filename string) (string, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	h := sha256.New()
-	n, err := io.Copy(h, f)
-	if err != nil || n == 0 {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+func (s StreamHash) GetHash() string {
+	return hex.EncodeToString(s.h.Sum(nil))
 }

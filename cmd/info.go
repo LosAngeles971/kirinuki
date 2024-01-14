@@ -29,7 +29,7 @@ var infoCmd = &cobra.Command{
 Usage:
 	kirinuki info --name <name>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g := getGateway(email, askPassword())
+		g := getGateway(email)
 		err := g.Login()
 		if err != nil {
 			log.Fatalf("login failed [%v]", err)

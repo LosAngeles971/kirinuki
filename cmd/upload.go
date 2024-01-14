@@ -28,7 +28,7 @@ var uploadCmd = &cobra.Command{
 Usage:
 	kirinuki upload --email <email> --name <name> --filename <filename>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g := getGateway(email, askPassword())
+		g := getGateway(email)
 		err := g.Login()
 		if err != nil {
 			log.Fatalf("login failed [%v]", err)

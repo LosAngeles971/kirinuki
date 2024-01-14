@@ -28,7 +28,7 @@ var downloadCmd = &cobra.Command{
 Usage:
 	kirinuki download --email <email> --name <name> --filename <filename>`,
 	Run: func(cmd *cobra.Command, args []string) {
-		g := getGateway(email, askPassword())
+		g := getGateway(email)
 		log.Infof("downloading %s ...", name)
 		err := g.Download(name, filename)
 		if err != nil {

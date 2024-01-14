@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/LosAngeles971/kirinuki/internal"
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
@@ -23,16 +22,16 @@ type StowStorage struct {
 	cfg       stow.ConfigMap
 }
 
-func NewStowStorage(name string, ci ConfigItem) (Storage, error) {
+func NewStowStorage(name string, def StorageDefinition) (Storage, error) {
 	s := StowStorage{
 		name: name,
 		cfg:  stow.ConfigMap{},
-		kind: ci.Type,
+		kind: def.Type,
 	}
-	switch ci.Type {
+	switch def.Type {
 	case local.Kind:
-		s.container = ci.Cfg["path"]
-		s.cfg["path"] = ci.Cfg["path"]
+		s.container = def.Cfg["path"]
+		s.cfg["path"] = def.Cfg["path"]
 		if _, err := os.Stat(s.container); os.IsNotExist(err) {
 			err := os.Mkdir(s.container, 0700)
 			if err != nil {
@@ -40,23 +39,23 @@ func NewStowStorage(name string, ci ConfigItem) (Storage, error) {
 			}
 		}
 	case s3.Kind:
-		s.container = ci.Cfg["bucket"]
-		s.cfg[s3.ConfigAccessKeyID] = ci.Cfg["accesskey"]
-		s.cfg[s3.ConfigSecretKey] = ci.Cfg["secretkey"]
-		s.cfg[s3.ConfigRegion] = ci.Cfg["region"]
-		s.cfg[s3.ConfigDisableSSL] = ci.Cfg["disable_ssl"]
-		if len(ci.Cfg["endpoint"]) > 0 {
-			s.cfg[s3.ConfigEndpoint] = ci.Cfg["endpoint"]
+		s.container = def.Cfg["bucket"]
+		s.cfg[s3.ConfigAccessKeyID] = def.Cfg["accesskey"]
+		s.cfg[s3.ConfigSecretKey] = def.Cfg["secretkey"]
+		s.cfg[s3.ConfigRegion] = def.Cfg["region"]
+		s.cfg[s3.ConfigDisableSSL] = def.Cfg["disable_ssl"]
+		if len(def.Cfg["endpoint"]) > 0 {
+			s.cfg[s3.ConfigEndpoint] = def.Cfg["endpoint"]
 		}
 	case sftp.Kind:
-		s.container = ci.Cfg["directory"]
-		s.cfg[sftp.ConfigBasePath] = ci.Cfg["base_path"]
-		s.cfg[sftp.ConfigHost] = ci.Cfg["host"]
-		s.cfg[sftp.ConfigPort] = ci.Cfg["port"]
-		s.cfg[sftp.ConfigUsername] = ci.Cfg["username"]
-		s.cfg[sftp.ConfigPassword] = ci.Cfg["password"]
+		s.container = def.Cfg["directory"]
+		s.cfg[sftp.ConfigBasePath] = def.Cfg["base_path"]
+		s.cfg[sftp.ConfigHost] = def.Cfg["host"]
+		s.cfg[sftp.ConfigPort] = def.Cfg["port"]
+		s.cfg[sftp.ConfigUsername] = def.Cfg["username"]
+		s.cfg[sftp.ConfigPassword] = def.Cfg["password"]
 	default:
-		return StowStorage{}, fmt.Errorf("unrecognized type of storage %s", ci.Type)
+		return StowStorage{}, fmt.Errorf("unrecognized type of storage %s", def.Type)
 	}
 	return s, nil
 }
@@ -131,7 +130,7 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 		return "", err
 	}
 	defer r.Close()
-	sh := internal.NewStreamHash(r)
+	sh := NewStreamHash(r)
 	// FIX ME: avoid to use memory
 	dd, err := ioutil.ReadAll(sh.GetReader())
 	if err != nil {

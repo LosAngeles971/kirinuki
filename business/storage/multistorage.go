@@ -1,3 +1,5 @@
+package storage
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,70 +16,37 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package storage
 
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
 	"github.com/graymeta/stow/sftp"
-	"gopkg.in/yaml.v3"
 )
 
 const (
 	TEMP_STORAGE = "temp"
 )
 
-// ConfigMap contains configurations for a plurality of storage targets
-type ConfigMap struct {
-	Map map[string]ConfigItem `yaml:"map" json:"map"`
+// StorageDefinition defines a specific storage target
+type StorageDefinition struct {
+	Type string            `yaml:"type" json:"type"`
+	Cfg  map[string]string `yaml:"config" json:"config"` // configuration parameters
 }
 
-// StorageMap is a manager of a plurality of storage targets
+// StorageDefinitions contains a list of defined storage targets
+type StorageDefinitions struct {
+	Map map[string]StorageDefinition `yaml:"map" json:"map"` 
+}
+
+// MultiStorage: it allows to deal with all defined storage targets (upload, download, delete, ...)
 type MultiStorage struct {
-	targets []Storage
+	targets []Storage // list of defined storage targets
 }
 
 type MultiStorageOption func(*MultiStorage) error
-
-// WithYAMLData populates a StorageMap from a YAML data
-func WithYAMLData(data []byte) MultiStorageOption {
-	return func(m *MultiStorage) error {
-		cm := &ConfigMap{}
-		err := yaml.Unmarshal(data, cm)
-		if err != nil {
-			return err
-		}
-		for name, ci := range cm.Map {
-			err = m.Add(name, ci)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
-// WithJSONData populates a StorageMap from a JSON data
-func WithJSONData(data []byte) MultiStorageOption {
-	return func(m *MultiStorage) error {
-		cm := &ConfigMap{}
-		err := json.Unmarshal(data, cm)
-		if err != nil {
-			return err
-		}
-		for name, ci := range cm.Map {
-			err = m.Add(name, ci)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
 
 // NewStorageMap creates a new StorageMap (empty or populated depending on the options)
 func NewMultiStorage(opts ...MultiStorageOption) (*MultiStorage, error) {
@@ -93,21 +62,37 @@ func NewMultiStorage(opts ...MultiStorageOption) (*MultiStorage, error) {
 	return m, nil
 }
 
-func (m *MultiStorage) Add(name string, ci ConfigItem) error {
+// Add: it allows to manually add a storage target defined by ci
+func (m *MultiStorage) Add(name string, def StorageDefinition) error {
 	var ss Storage
 	var err error
-	switch ci.Type {
+	switch def.Type {
 	case local.Kind, s3.Kind:
-		ss, err = NewStowStorage(name, ci)
+		ss, err = NewStowStorage(name, def)
 	case sftp.Kind:
-		ss, err = NewSFTP(name, ci.Cfg), nil
+		ss, err = NewSFTP(name, def.Cfg), nil
 	default:
-		return fmt.Errorf("unrecognized type of storage %s", ci.Type)
+		return fmt.Errorf("unrecognized type of storage %s", def.Type)
 	}
 	if err != nil {
 		return err
 	}
 	m.targets = append(m.targets, ss)
+	return nil
+}
+
+func (m *MultiStorage) LoadByJSON(data []byte) error {
+	defs := StorageDefinitions{}
+	err := json.Unmarshal(data, &defs)
+	if err != nil {
+		return err
+	}
+	for name, def := range defs.Map {
+		err = m.Add(name, def)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -121,7 +106,7 @@ func (m *MultiStorage) get(sName string) (Storage, error) {
 }
 
 func (m *MultiStorage) AddLocal(name string, base string) error {
-	return m.Add(name, ConfigItem{
+	return m.Add(name, StorageDefinition{
 		Type: "local",
 		Cfg: map[string]string{
 			"path": base,
@@ -129,6 +114,7 @@ func (m *MultiStorage) AddLocal(name string, base string) error {
 	})
 }
 
+// Names: it returns the list of storage targets' names
 func (m *MultiStorage) Names() []string {
 	names := []string{}
 	for _, ss := range m.targets {
@@ -180,15 +166,4 @@ func (m *MultiStorage) Upload(sName string, filename string, name string) error 
 		return nil
 	}
 	return ss.Upload(filename, name)
-}
-
-func GetTmp(tDir string) *MultiStorage {
-	base := os.TempDir() + "/" + tDir
-	if _, err := os.Stat(base); err == nil {
-		os.RemoveAll(base)
-	}
-	_ = os.Mkdir(base, os.ModePerm)
-	sm, _ := NewMultiStorage()
-	sm.AddLocal(tDir, base)
-	return sm
 }

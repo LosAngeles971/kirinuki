@@ -1,3 +1,5 @@
+package mosaic
+
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -14,7 +16,6 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package mosaic
 
 import (
 	_ "embed"
@@ -22,41 +23,28 @@ import (
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
-	"github.com/LosAngeles971/kirinuki/internal"
+	"github.com/stretchr/testify/require"
 )
 
 //go:embed test_file1.png
 var test_file1 []byte
 
-// TestMosaic verifies upload and download of Kirinuki files
+// TestMosaic: it verifies upload and download of Kirinuki files
 func TestMosaic(t *testing.T) {
-	internal.Setup()
-	sm := storage.GetTmp("mosaic")
-	sChunk := NewChunk(1, "file", WithFilename(internal.GetTmp() + "/tobe_uploaded"))
-	tChunk := NewChunk(1, "file", WithFilename(internal.GetTmp() + "/tobe_downloaded"))
+	tsm := storage.NewTestLocalMultistorage("mosaic")
+	sChunk := NewChunk(1, "file", WithFilename(storage.GetTmp() + "/tobe_uploaded"))
+	tChunk := NewChunk(1, "file", WithFilename(storage.GetTmp() + "/tobe_downloaded"))
 	err := ioutil.WriteFile(sChunk.filename, test_file1, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h1, err := internal.GetFileHash(sChunk.filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mm := New(sm)
+	require.Nil(t, err)
+	h1, err := storage.GetFileHash(sChunk.filename)
+	require.Nil(t, err)
+	mm := New(tsm.GetMultiStorage())
 	err = mm.Upload([]*Chunk{sChunk})
-	if err != nil {
-		t.Fatalf("failed upload -> %v", err)
-	}
+	require.Nil(t, err)
 	err = mm.Download([]*Chunk{tChunk})
-	if err != nil {
-		t.Fatalf("failed download -> %v", err)
-	}
-	h2, err := internal.GetFileHash(tChunk.filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h1 != h2 {
-		t.Fatalf("mismatch %s %s", h1, h2)
-	}
-	internal.Clean("mosaic")
+	require.Nil(t, err)
+	h2, err := storage.GetFileHash(tChunk.filename)
+	require.Nil(t, err)
+	require.Equal(t, h1, h2)
+	tsm.Clean()
 }
