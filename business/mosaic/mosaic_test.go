@@ -19,7 +19,7 @@ package mosaic
 
 import (
 	_ "embed"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/storage"
@@ -32,9 +32,9 @@ var test_file1 []byte
 // TestMosaic: it verifies upload and download of Kirinuki files
 func TestMosaic(t *testing.T) {
 	tsm := storage.NewTestLocalMultistorage("mosaic")
-	sChunk := NewChunk(1, "file", WithFilename(storage.GetTmp() + "/tobe_uploaded"))
-	tChunk := NewChunk(1, "file", WithFilename(storage.GetTmp() + "/tobe_downloaded"))
-	err := ioutil.WriteFile(sChunk.filename, test_file1, 0755)
+	sChunk := NewChunk(1, "file", WithFilename(storage.GetTmp()+"/tobe_uploaded"))
+	tChunk := NewChunk(1, "file", WithFilename(storage.GetTmp()+"/tobe_downloaded"))
+	err := os.WriteFile(sChunk.filename, test_file1, 0755)
 	require.Nil(t, err)
 	h1, err := storage.GetFileHash(sChunk.filename)
 	require.Nil(t, err)

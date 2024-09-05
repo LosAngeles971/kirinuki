@@ -24,7 +24,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"time"
@@ -41,7 +40,7 @@ const (
 	buffer_size = 16 * 1024 // buffer's size during encryption/decryption of files
 )
 
-// File: it represents a single file into Kirinuki world
+// File: it represents a single file into Kirinuki domain
 type File struct {
 	Date         int64           `json:"date"`         // date of last upload
 	Name         string          `json:"name"`         // file's name
@@ -183,7 +182,7 @@ func (f *File) Decrypt(sFile string, tFile string) error {
 	}
 }
 
-// splitting of external file into chunks
+// Split: the func splits the file into chunks
 func (file *File) Split(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -206,7 +205,7 @@ func (file *File) Split(filename string) error {
 		if err != nil || n != int(chunk_size) {
 			return err
 		}
-		err = ioutil.WriteFile(c.GetFilename(), buf, 0755)
+		err = os.WriteFile(c.GetFilename(), buf, 0755)
 		if err != nil {
 			return err
 		}
@@ -214,7 +213,7 @@ func (file *File) Split(filename string) error {
 	return nil
 }
 
-// merging external chunks into external file
+// Merge: the func merges a set of chunks into a coherent file
 func (file *File) Merge(filename string) error {
 	log.Debugf("merging #chunks %v to file %s [%s]...", len(file.Chunks), file.Name, filename)
 	f, err := os.Create(filename)
@@ -241,7 +240,7 @@ func (file *File) Merge(filename string) error {
 	return nil
 }
 
-// assigning storage targets to every chunk of the file
+// setCrushMap: the func assigns storage targets to every chunk of file
 func (f *File) setCrushMap(targets []string) {
 	log.Debugf("setting crush map for file %s ...", f.Name)
 	f.Chunks = []*mosaic.Chunk{}

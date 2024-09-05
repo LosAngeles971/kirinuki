@@ -139,7 +139,7 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 	if len(dd) < 1 {
 		return "", fmt.Errorf("download file %s got 0 bytes", filename)
 	}
-	err = ioutil.WriteFile(filename, dd, 0755)
+	err = os.WriteFile(filename, dd, 0755)
 	if err != nil {
 		return "", err
 	}
