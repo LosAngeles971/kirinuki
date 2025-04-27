@@ -14,14 +14,9 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package kirinuki
+package mosaic
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,8 +24,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/LosAngeles971/kirinuki/business/mosaic"
-	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/config"
+	"github.com/LosAngeles971/kirinuki/business/helpers"
+	"github.com/LosAngeles971/kirinuki/business/multistorage"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -41,146 +37,53 @@ const (
 	buffer_size = 16 * 1024 // buffer's size during encryption/decryption of files
 )
 
-// File: it represents a single file into Kirinuki world
+// File: a single file into Kirinuki domain
 type File struct {
-	Date         int64           `json:"date"`         // date of last upload
-	Name         string          `json:"name"`         // file's name
-	Chunks       []*mosaic.Chunk `json:"chunks"`       // list of file's chunks
-	Symmetrickey string          `json:"symmetrickey"` // symmetric encryption key used to encrypt the file
-	Checksum     string          `json:"checksum"`     // checksum of the original file
+	Encrypted bool `json:"encrypted"`         // date of last modification
+	Date         int64    `json:"date"`         // date of last modification
+	Name         string   `json:"name"`         // file's name
+	Chunks       []*Chunk `json:"chunks"`       // list of chunks into which the file is destructured
+	Symmetrickey string   `json:"symmetrickey"` // symmetric encryption key used to encrypt the file
+	Checksum     string   `json:"checksum"`     // checksum of the original file
 }
 
 type FileOption func(*File)
 
-// Usage of a random generated symmetric key to encrypt the file
+/* // Usage of a random generated symmetric key to encrypt the file
 func WithRandomkey() FileOption {
 	return func(f *File) {
-		f.setRandomKey()
+		f.Symmetrickey = helpers.GetRndEncodedKey()
 	}
 }
 
-// Usage of an already existent symmetric key (the table of content uses this option)
+// Usage of a provided symmetric key (the table of content uses this option)
 func WithEncodedKey(key string) FileOption {
 	return func(k *File) {
 		k.Symmetrickey = key
 	}
 }
 
-// Usage of already existent chunks (table of content uses this option)
-func WithChunks(chunks []*mosaic.Chunk) FileOption {
+// Usage of provide chunks
+// Only the "table of content" uses this option
+func WithChunks(chunks []*Chunk) FileOption {
 	return func(f *File) {
 		f.Chunks = chunks
 	}
-}
+} */
 
-// NewFile: it creates a new File into the world of Kirinuki
-func NewFile(name string, opts ...FileOption) *File {
+// It creates a new File object
+// It may include the data (in case of WithChunks option) or not
+func newFile(name string, targets []string, opts ...FileOption) *File {
 	k := &File{
+		Encrypted: false,
 		Name: name,
 		Date: time.Now().UnixNano(),
 	}
 	for _, opt := range opts {
 		opt(k)
 	}
+	k.Chunks = getCrushMap(targets)
 	return k
-}
-
-// this method is used to assign a random symmetric key to a File deserialized by the table of content
-func (f *File) setRandomKey() {
-	key := sha256.Sum256(storage.GetRndBytes(key_size))
-	f.Symmetrickey = hex.EncodeToString(key[:])
-}
-
-// encrypting external file into external file using the file's symmetric key
-func (f *File) Encrypt(sFile string, tFile string) error {
-	log.Debugf("encrypting %s to %s ...", sFile, tFile)
-	key, err := hex.DecodeString(f.Symmetrickey)
-	if err != nil {
-		return fmt.Errorf("failed to decode symmetric key -> %v", err)
-	}
-	in, err := os.Open(sFile)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(tFile)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return err
-	}
-	iv := make([]byte, block.BlockSize())
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		log.Fatal(err)
-	}
-	stream := cipher.NewCTR(block, iv)
-	inBuf := make([]byte, buffer_size)
-	for {
-		n, err := in.Read(inBuf)
-		if err == io.EOF {
-			out.Write(iv)
-			return nil
-		}
-		if err != nil && err != io.EOF {
-			return err
-		}
-		stream.XORKeyStream(inBuf, inBuf[:n])
-		out.Write(inBuf[:n])
-	}
-}
-
-// decrypting external file into external file using the file's symmetric key
-func (f *File) Decrypt(sFile string, tFile string) error {
-	log.Debugf("decrypting %s to %s ...", sFile, tFile)
-	key, err := hex.DecodeString(f.Symmetrickey)
-	if err != nil {
-		return fmt.Errorf("failed to decode symmetric key -> %v", err)
-	}
-	in, err := os.Open(sFile)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(tFile)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return err
-	}
-	fi, err := in.Stat()
-	if err != nil {
-		return err
-	}
-
-	iv := make([]byte, block.BlockSize())
-	msgLen := fi.Size() - int64(len(iv))
-	_, err = in.ReadAt(iv, msgLen)
-	if err != nil {
-		return err
-	}
-	stream := cipher.NewCTR(block, iv)
-	inBuf := make([]byte, buffer_size)
-	for {
-		n, err := in.Read(inBuf)
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if n > int(msgLen) {
-			n = int(msgLen)
-		}
-		msgLen -= int64(n)
-		stream.XORKeyStream(inBuf, inBuf[:n])
-		out.Write(inBuf[:n])
-	}
 }
 
 // splitting of external file into chunks
@@ -241,36 +144,21 @@ func (file *File) Merge(filename string) error {
 	return nil
 }
 
-// assigning storage targets to every chunk of the file
-func (f *File) setCrushMap(targets []string) {
-	log.Debugf("setting crush map for file %s ...", f.Name)
-	f.Chunks = []*mosaic.Chunk{}
-	// create a chunk for every available storage
-	for i := 0; i < len(targets); i++ {
-		name := storage.GetFilename(nameSize)
-		c := mosaic.NewChunk(i, name, mosaic.WithFilename(storage.GetTmp()+"/"+name))
-		c.TargetNames = targets
-		f.Chunks = append(f.Chunks, c)
-		log.Debugf("crush map for file %s chunks %v [%s] - size %v - #targets %v", f.Name, c.Index, c.Name, c.Real_size, len(c.TargetNames))
-	}
-	log.Debugf("crush map for file %s #chunks %v", f.Name, len(f.Chunks))
-}
-
 // uploading an external file to the storage
-func (f *File) Upload(filename string, ms *storage.MultiStorage) error {
+func (f *File) Upload(filename string, ms *multistorage.MultiStorage) error {
 	log.Debugf("uploading file %s as %s to storage...", filename, f.Name)
 	// Table of Content comes with own key
 	if len(f.Symmetrickey) < 1 {
-		f.setRandomKey()
+		f.Symmetrickey = helpers.GetRndEncodedKey()
 	}
 	var err error
-	f.Checksum, err = storage.GetFileHash(filename)
+	f.Checksum, err = helpers.GetFileHash(filename)
 	if err != nil {
 		return err
 	}
 	log.Debugf("kirinuki file %s from %s for hash %s", f.Name, filename, f.Checksum)
-	ff := storage.GetTmp() + "/" + storage.GetFilename(nameSize)
-	err = f.Encrypt(filename, ff)
+	ff := config.GetTmp() + "/" + helpers.GetFilename(nameSize)
+	err = helpers.EncryptFile(filename, ff, f.Symmetrickey)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt file -> %v", err)
 	}
@@ -287,27 +175,27 @@ func (f *File) Upload(filename string, ms *storage.MultiStorage) error {
 }
 
 // downloading an external file from the storage
-func (f *File) Download(filename string, ms *storage.MultiStorage) error {
+func (f *File) Download(filename string, ms *multistorage.MultiStorage) error {
 	log.Debugf("downloading file %s from storage to local file %s...", f.Name, filename)
 	mm := mosaic.New(ms)
 	err := mm.Download(f.Chunks)
 	if err != nil {
 		return fmt.Errorf("failed download -> %v", err)
 	}
-	mergeFile := storage.GetTmp() + "/" + storage.GetFilename(nameSize)
+	mergeFile := config.GetTmp() + "/" + helpers.GetFilename(nameSize)
 	err = f.Merge(mergeFile)
 	if err != nil {
 		return fmt.Errorf("failed to merge chunks to %s -> %v", mergeFile, err)
 	}
 	log.Debugf("merged chunks of file %s from storage to local temporary file %s", f.Name, mergeFile)
 	log.Debugf("decrypting file %s with key %s", mergeFile, f.Symmetrickey)
-	err = f.Decrypt(mergeFile, filename)
+	err = helpers.DecryptFile(mergeFile, filename, f.Symmetrickey)
 	if err != nil {
 		return err
 	}
 	log.Debugf("decrypted local file %s to local file %s", mergeFile, filename)
 	if len(f.Checksum) > 0 {
-		h, err := storage.GetFileHash(filename)
+		h, err := helpers.GetFileHash(filename)
 		if err != nil {
 			return err
 		}

@@ -26,7 +26,7 @@ type Chunk struct {
 	Checksum    string   `json:"checksum"`
 	err         error
 	filename    string
-	status      map[string]string
+	status      map[string]int
 }
 
 type ChunkOption func(*Chunk)
@@ -44,7 +44,7 @@ func NewChunk(index int, name string, opts ...ChunkOption) *Chunk {
 		TargetNames: []string{},          // list of storages where the chunk's data is stored on
 		Name:        name,                // unique identifier of the chunk
 		Index:       index,               // chunk's position into the sequence of chunks which compose an entire Kirinuki file
-		status:      map[string]string{}, // a map of where the chunk's data has been successufully (or not) uploaded
+		status:      map[string]int{}, // a map of where the chunk's data has been successufully (or not) uploaded
 	}
 	for _, opt := range opts {
 		opt(c)

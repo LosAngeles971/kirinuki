@@ -1,4 +1,4 @@
-package kirinuki
+package mosaic
 
 /*
  * Created on Sun Apr 10 2022
@@ -20,79 +20,81 @@ package kirinuki
 import (
 	"crypto/rand"
 	"io"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/mosaic"
-	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/multistorage"
+	"github.com/LosAngeles971/kirinuki/business/helpers"
+	"github.com/LosAngeles971/kirinuki/business/config"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSplitMerge(t *testing.T) {
-	storage.SetTestEnv()
+	multistorage.SetTestEnv()
 	file := NewFile("split-merge")
 	file.Chunks = []*mosaic.Chunk{
-		mosaic.NewChunk(1, "c1", mosaic.WithFilename(storage.GetTmp()+"/split1")),
-		mosaic.NewChunk(1, "c2", mosaic.WithFilename(storage.GetTmp()+"/split2")),
-		mosaic.NewChunk(1, "c3", mosaic.WithFilename(storage.GetTmp()+"/split3")),
+		mosaic.NewChunk(1, "c1", mosaic.WithFilename(config.GetTmp()+"/split1")),
+		mosaic.NewChunk(1, "c2", mosaic.WithFilename(config.GetTmp()+"/split2")),
+		mosaic.NewChunk(1, "c3", mosaic.WithFilename(config.GetTmp()+"/split3")),
 	}
-	splitFile := storage.GetTmp() + "/split.png"
-	mergeFile := storage.GetTmp() + "/merge.png"
-	err := storage.CreateFile(splitFile, 100000)
+	splitFile := config.GetTmp() + "/split.png"
+	mergeFile := config.GetTmp() + "/merge.png"
+	err := helpers.CreateRandomFile(splitFile, 100000)
 	require.Nil(t, err)
-	h1, _ := storage.GetFileHash(splitFile)
+	h1, _ := helpers.GetFileHash(splitFile)
 	err = file.Split(splitFile)
 	require.Nil(t, err)
 	err = file.Merge(mergeFile)
 	require.Nil(t, err)
-	h2, err := storage.GetFileHash(mergeFile)
+	h2, err := helpers.GetFileHash(mergeFile)
 	require.Nil(t, err)
 	require.Equal(t, h1, h2)
-	storage.CleanTestEnv()
+	multistorage.CleanTestEnv()
 }
 
 func TestConfidentiality(t *testing.T) {
-	storage.SetTestEnv()
+	multistorage.SetTestEnv()
 	size := 50000
 	data := make([]byte, size)
 	_, err := io.ReadFull(rand.Reader, data)
 	require.Nil(t, err)
-	checksum := storage.GetHash(data)
-	sFile := storage.GetTmp() + "/plain.png"
-	err = ioutil.WriteFile(sFile, data, 0755)
+	checksum := helpers.GetHash(data)
+	sFile := config.GetTmp() + "/plain.png"
+	err = os.WriteFile(sFile, data, 0755)
 	require.Nil(t, err)
 	f := NewFile("plain", WithRandomkey())
-	tFile := storage.GetTmp() + "/crypted.png"
-	ttFile := storage.GetTmp() + "/decrypted.png"
-	h1, err := storage.GetFileHash(sFile)
+	tFile := config.GetTmp() + "/crypted.png"
+	ttFile := config.GetTmp() + "/decrypted.png"
+	h1, err := helpers.GetFileHash(sFile)
 	require.Nil(t, err)
 	require.Equal(t, checksum, h1)
 	err = f.Encrypt(sFile, tFile)
 	require.Nil(t, err)
 	err = f.Decrypt(tFile, ttFile)
 	require.Nil(t, err)
-	h2, err := storage.GetFileHash(ttFile)
+	h2, err := helpers.GetFileHash(ttFile)
 	require.Nil(t, err)
 	require.Equal(t, h1, h2)
 }
 
 func TestIO(t *testing.T) {
-	storage.SetTestEnv()
+	multistorage.SetTestEnv()
 	name := "source"
-	fName := storage.GetTmp() + "/" + name
-	err := storage.CreateFile(fName, 100000)
+	fName := config.GetTmp() + "/" + name
+	err := helpers.CreateRandomFile(fName, 100000)
 	require.Nil(t, err)
-	checksum, _ := storage.GetFileHash(fName)
-	tsm := storage.NewTestLocalMultistorage("kirinuki")
+	checksum, _ := helpers.GetFileHash(fName)
+	tsm := multistorage.NewTestLocalMultistorage("kirinuki")
 	file := NewFile(name)
 	err = file.Upload(fName, tsm.GetMultiStorage())
 	require.Nil(t, err)
-	destFile := storage.GetTmp() + "/dest.png" 
+	destFile := config.GetTmp() + "/dest.png" 
 	err = file.Download(destFile, tsm.GetMultiStorage())
 	require.Nil(t, err)
-	h, err := storage.GetFileHash(destFile)
+	h, err := helpers.GetFileHash(destFile)
 	require.Nil(t, err)
 	require.Equal(t, checksum, h)
-	storage.CleanTestEnv()
+	multistorage.CleanTestEnv()
 	tsm.Clean()
 }

@@ -1,5 +1,3 @@
-package storage
-
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -16,34 +14,22 @@ package storage
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
- 
-import (
-	"bytes"
-	_ "embed"
-	"io/ioutil"
-	"os"
-	"testing"
+ package mosaic
+
+ import (
+	 "github.com/LosAngeles971/kirinuki/business/config"
+	 "github.com/LosAngeles971/kirinuki/business/helpers"
 )
 
-func TestHashOfStream(t *testing.T) {
-	hFile := GetRndBytes(100000)
-	h1 := GetHash(hFile)
-	r := bytes.NewReader(hFile)
-	hr := NewStreamHash(r)
-	data, err := ioutil.ReadAll(hr.GetReader())
-	if err != nil {
-		t.Fatal(err)
+// assigning storage targets to every chunk of the file
+func getCrushMap(targets []string) []*Chunk {
+	chunks := []*Chunk{}
+	// create a chunk for every available storage
+	for i := 0; i < len(targets); i++ {
+		name := helpers.GetFilename(nameSize)
+		c := NewChunk(i, name, WithFilename(config.GetTmp()+"/"+name))
+		c.TargetNames = targets
+		chunks = append(chunks, c)
 	}
-	tFile := os.TempDir() + "/teefile.png"
-	err = ioutil.WriteFile(tFile, data, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h2, err := GetFileHash(tFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h1 != h2 {
-		t.Fatalf("mimatch %s %s", h1, h2)
-	}
+	return chunks
 }

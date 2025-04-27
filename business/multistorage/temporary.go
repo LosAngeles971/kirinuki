@@ -1,5 +1,3 @@
-package storage
-
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -16,24 +14,25 @@ package storage
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package multistorage
+
+/*
+
+This module provides abstract methods to handle with a storage for temporary files.
+
+*/
 
 import (
-	_ "embed"
-	"testing"
+	"os"
+	"fmt"
 
-	"github.com/stretchr/testify/require"
+	"github.com/LosAngeles971/kirinuki/business/config"
 )
 
-//go:embed sftp.json
-var sftpFile []byte
+func SaveDataToTemp(data []byte, name string) error {
+	return os.WriteFile(fmt.Sprintf("%s/%s", config.GetTmp(), name), data, 0755)
+}
 
-func TestSFTP(t *testing.T) {
-	t.Skip("missing integration test")
-	sm, err := NewMultiStorage()
-	require.Nil(t, err)
-	err = sm.LoadByJSON(sftpFile)
-	require.Nil(t, err)
-	s, err := sm.get("sftp")
-	require.Nil(t, err)
-	doTargetStorageTest(t, s)
+func LoadDataFromTemp(name string) ([]byte, error) {
+	return os.ReadFile(fmt.Sprintf("%s/%s", config.GetTmp(), name))
 }

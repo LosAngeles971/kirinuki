@@ -1,4 +1,4 @@
-package storage
+package sftpi
 
 import (
 	"bufio"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LosAngeles971/kirinuki/business/helpers"
 	"github.com/pkg/sftp"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -26,7 +27,7 @@ type SFTP struct {
 	keyexchanges []string
 }
 
-func NewSFTP(name string, cfg map[string]string) SFTP {
+func New(name string, cfg map[string]string) SFTP {
 	c := SFTP{
 		name: name,
 		basedir: cfg["basedir"],
@@ -126,7 +127,7 @@ func (s SFTP) Put(filename string, data []byte) error {
 }
 
 func (s SFTP) Download(name string, filename string) (string, error) {
-	DeleteLocalFile(filename)
+	helpers.DeleteLocalFile(filename)
 	sftpClient, err := s.getClient()
 	if err != nil {
 		return "", fmt.Errorf("failed to connect [%v]", err)
@@ -143,7 +144,7 @@ func (s SFTP) Download(name string, filename string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	sh := NewStreamHash(destFile)
+	sh := helpers.NewStreamHash(destFile)
 	n, err := io.Copy(f, sh.GetReader())
 	if err != nil || n == 0 {
 		return "", fmt.Errorf("transferred %v bytes -> %v", n, err)

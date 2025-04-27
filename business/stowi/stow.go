@@ -1,4 +1,4 @@
-package storage
+package stowi
 
 import (
 	"bufio"
@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/LosAngeles971/kirinuki/business/config"
+	"github.com/LosAngeles971/kirinuki/business/helpers"
+	"github.com/LosAngeles971/kirinuki/business/storage"
 	"github.com/graymeta/stow"
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
@@ -22,7 +25,7 @@ type StowStorage struct {
 	cfg       stow.ConfigMap
 }
 
-func NewStowStorage(name string, def StorageDefinition) (Storage, error) {
+func New(name string, def config.StorageDef) (storage.Storage, error) {
 	s := StowStorage{
 		name: name,
 		cfg:  stow.ConfigMap{},
@@ -110,7 +113,7 @@ func (s StowStorage) Put(name string, data []byte) error {
 }
 
 func (s StowStorage) Download(name string, filename string) (string, error) {
-	DeleteLocalFile(filename)
+	helpers.DeleteLocalFile(filename)
 	loc, err := stow.Dial(s.kind, s.cfg)
 	if err != nil {
 		return "", err
@@ -130,7 +133,7 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 		return "", err
 	}
 	defer r.Close()
-	sh := NewStreamHash(r)
+	sh := helpers.NewStreamHash(r)
 	// FIX ME: avoid to use memory
 	dd, err := ioutil.ReadAll(sh.GetReader())
 	if err != nil {
@@ -139,7 +142,7 @@ func (s StowStorage) Download(name string, filename string) (string, error) {
 	if len(dd) < 1 {
 		return "", fmt.Errorf("download file %s got 0 bytes", filename)
 	}
-	err = ioutil.WriteFile(filename, dd, 0755)
+	err = os.WriteFile(filename, dd, 0755)
 	if err != nil {
 		return "", err
 	}

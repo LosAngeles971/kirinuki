@@ -23,7 +23,7 @@ import (
 
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
 	"github.com/LosAngeles971/kirinuki/business/mosaic"
-	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/multistorage"
 	"github.com/LosAngeles971/kirinuki/business/toc"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
@@ -33,12 +33,12 @@ type Gateway struct {
 	email           string
 	password        string
 	toc             *toc.TableOfContent
-	storage         *storage.MultiStorage
+	storage         *multistorage.MultiStorage
 }
 
 type GatewayOption func(*Gateway)
 
-func WithStorage(m *storage.MultiStorage) GatewayOption {
+func WithStorage(m *multistorage.MultiStorage) GatewayOption {
 	return func(s *Gateway) {
 		s.storage = m
 	}
@@ -55,7 +55,7 @@ func New(email string, password string, opts ...GatewayOption) (*Gateway, error)
 	}
 	if g.storage == nil {
 		var err error
-		g.storage, err = storage.NewMultiStorage()
+		g.storage, err = multistorage.New()
 		if err != nil {
 			return g, err
 		}
@@ -138,7 +138,7 @@ func (g *Gateway) Upload(filename string, name string, overwrite bool) error {
 	if g.toc.Exist(name) && !overwrite {
 		return fmt.Errorf("file %s already exists", name)
 	}
-	f := kirinuki.NewFile(name, kirinuki.WithRandomkey())
+	f := mosaic.NewFile(name, kirinuki.WithRandomkey())
 	err := f.Upload(filename, g.storage)
 	if err != nil {
 		return err

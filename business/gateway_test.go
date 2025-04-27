@@ -25,7 +25,9 @@ import (
 	"testing"
 
 	"github.com/LosAngeles971/kirinuki/business/kirinuki"
-	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/multistorage"
+	"github.com/LosAngeles971/kirinuki/business/helpers"
+	"github.com/LosAngeles971/kirinuki/business/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,8 +37,8 @@ const (
 
 // TestSession tests the creation, alteration, storing and re-opening of a session
 func TestSession(t *testing.T) {
-	tsm := storage.NewTestLocalMultistorage("gateway")
-	g, err := New(storage.Test_email, storage.Test_password, WithStorage(tsm.GetMultiStorage()))
+	tsm := multistorage.NewTestLocalMultistorage("gateway")
+	g, err := New(multistorage.Test_email, multistorage.Test_password, WithStorage(tsm.GetMultiStorage()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,8 +70,8 @@ func TestSession(t *testing.T) {
 }
 
 func TestIO(t *testing.T) {
-	tsm := storage.NewTestLocalMultistorage("gateway")
-	g, err := New(storage.Test_email, storage.Test_password, WithStorage(tsm.GetMultiStorage()))
+	tsm := multistorage.NewTestLocalMultistorage("gateway")
+	g, err := New(multistorage.Test_email, multistorage.Test_password, WithStorage(tsm.GetMultiStorage()))
 	require.Nil(t, err)
 	g.SetEmptyTableOfContent()
 	err = g.Logout()
@@ -79,9 +81,9 @@ func TestIO(t *testing.T) {
 		data := make([]byte, size)
 		_, err := io.ReadFull(rand.Reader, data)
 		require.Nil(t, err)
-		checksum := storage.GetHash(data)
+		checksum := helpers.GetHash(data)
 		name := fmt.Sprintf("testfile%v", i)
-		fName := storage.GetTmp() + "/" + name
+		fName := config.GetTmp() + "/" + name
 		err = ioutil.WriteFile(fName, data, 0755)
 		require.Nil(t, err)
 		err = g.Login()
@@ -92,10 +94,10 @@ func TestIO(t *testing.T) {
 		require.Nil(t, err)
 		err = g.Login()
 		require.Nil(t, err)
-		dName := storage.GetTmp() + "/" + fmt.Sprintf("d_testfile%v", i)
+		dName := config.GetTmp() + "/" + fmt.Sprintf("d_testfile%v", i)
 		err = g.Download(name, dName)
 		require.Nil(t, err, fmt.Sprintf("failed download %s to local filename %s -> %v", name, dName, err))
-		dChecksum, err := storage.GetFileHash(dName)
+		dChecksum, err := helpers.GetFileHash(dName)
 		require.Nil(t, err)
 		require.Equal(t, dChecksum, checksum, fmt.Sprintf("rebuild failed, expected hash [%v] not [%v]", checksum, dChecksum))
 	}

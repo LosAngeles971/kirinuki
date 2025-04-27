@@ -1,5 +1,3 @@
-package mosaic
-
 /*
  * Created on Sun Apr 10 2022
  * Author @LosAngeles971
@@ -16,37 +14,21 @@ package mosaic
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package helpers
 
 import (
 	_ "embed"
-	"io/ioutil"
 	"testing"
 
-	"github.com/LosAngeles971/kirinuki/business/multistorage"
-	"github.com/LosAngeles971/kirinuki/business/helpers"
-	"github.com/LosAngeles971/kirinuki/business/config"
 	"github.com/stretchr/testify/require"
 )
 
-//go:embed test_file1.png
-var test_file1 []byte
-
-// TestMosaic: it verifies upload and download of Kirinuki files
-func TestMosaic(t *testing.T) {
-	tsm := multistorage.NewTestLocalMultistorage("mosaic")
-	sChunk := NewChunk(1, "file", WithFilename(config.GetTmp() + "/tobe_uploaded"))
-	tChunk := NewChunk(1, "file", WithFilename(config.GetTmp() + "/tobe_downloaded"))
-	err := ioutil.WriteFile(sChunk.filename, test_file1, 0755)
+func TestDataEncryption(t *testing.T) {
+	plain := "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	ekey := GetRndEncodedKey()
+	dd, err := EncryptData([]byte(plain), ekey)
 	require.Nil(t, err)
-	h1, err := helpers.GetFileHash(sChunk.filename)
+	pp, err := DecryptData(dd, ekey)
 	require.Nil(t, err)
-	mm := New(tsm.GetMultiStorage())
-	err = mm.Upload([]*Chunk{sChunk})
-	require.Nil(t, err)
-	err = mm.Download([]*Chunk{tChunk})
-	require.Nil(t, err)
-	h2, err := helpers.GetFileHash(tChunk.filename)
-	require.Nil(t, err)
-	require.Equal(t, h1, h2)
-	tsm.Clean()
+	require.Equal(t, plain, string(pp))
 }

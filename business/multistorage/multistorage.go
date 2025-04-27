@@ -1,4 +1,4 @@
-package storage
+package multistorage
 
 /*
  * Created on Sun Apr 10 2022
@@ -18,9 +18,12 @@ package storage
  */
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/LosAngeles971/kirinuki/business/config"
+	"github.com/LosAngeles971/kirinuki/business/storage"
+	"github.com/LosAngeles971/kirinuki/business/stowi"
+	"github.com/LosAngeles971/kirinuki/business/sftpi"
 	"github.com/graymeta/stow/local"
 	"github.com/graymeta/stow/s3"
 	"github.com/graymeta/stow/sftp"
@@ -30,28 +33,20 @@ const (
 	TEMP_STORAGE = "temp"
 )
 
-// StorageDefinition defines a specific storage target
-type StorageDefinition struct {
-	Type string            `yaml:"type" json:"type"`
-	Cfg  map[string]string `yaml:"config" json:"config"` // configuration parameters
-}
-
-// StorageDefinitions contains a list of defined storage targets
-type StorageDefinitions struct {
-	Map map[string]StorageDefinition `yaml:"map" json:"map"` 
-}
-
 // MultiStorage: it allows to deal with all defined storage targets (upload, download, delete, ...)
 type MultiStorage struct {
-	targets []Storage // list of defined storage targets
+	targets []storage.Storage // list of defined storage targets
 }
 
 type MultiStorageOption func(*MultiStorage) error
 
 // NewStorageMap creates a new StorageMap (empty or populated depending on the options)
-func NewMultiStorage(opts ...MultiStorageOption) (*MultiStorage, error) {
+func New(opts ...MultiStorageOption) (*MultiStorage, error) {
 	m := &MultiStorage{
-		targets: []Storage{},
+		targets: []storage.Storage{},
+	}
+	for name, ss := range config.GetStorages() {
+		m.Add(name, ss)
 	}
 	for _, opt := range opts {
 		err := opt(m)
@@ -63,14 +58,14 @@ func NewMultiStorage(opts ...MultiStorageOption) (*MultiStorage, error) {
 }
 
 // Add: it allows to manually add a storage target defined by ci
-func (m *MultiStorage) Add(name string, def StorageDefinition) error {
-	var ss Storage
+func (m *MultiStorage) Add(name string, def config.StorageDef) error {
+	var ss storage.Storage
 	var err error
 	switch def.Type {
 	case local.Kind, s3.Kind:
-		ss, err = NewStowStorage(name, def)
+		ss, err = stowi.New(name, def)
 	case sftp.Kind:
-		ss, err = NewSFTP(name, def.Cfg), nil
+		ss, err = sftpi.New(name, def.Cfg), nil
 	default:
 		return fmt.Errorf("unrecognized type of storage %s", def.Type)
 	}
@@ -81,22 +76,7 @@ func (m *MultiStorage) Add(name string, def StorageDefinition) error {
 	return nil
 }
 
-func (m *MultiStorage) LoadByJSON(data []byte) error {
-	defs := StorageDefinitions{}
-	err := json.Unmarshal(data, &defs)
-	if err != nil {
-		return err
-	}
-	for name, def := range defs.Map {
-		err = m.Add(name, def)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *MultiStorage) get(sName string) (Storage, error) {
+func (m *MultiStorage) get(sName string) (storage.Storage, error) {
 	for _, ss := range m.targets {
 		if ss.Name() == sName {
 			return ss, nil
@@ -106,7 +86,7 @@ func (m *MultiStorage) get(sName string) (Storage, error) {
 }
 
 func (m *MultiStorage) AddLocal(name string, base string) error {
-	return m.Add(name, StorageDefinition{
+	return m.Add(name, config.StorageDef{
 		Type: "local",
 		Cfg: map[string]string{
 			"path": base,

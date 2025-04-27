@@ -14,29 +14,35 @@
  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package toc
+package helpers
 
 import (
+	"bytes"
 	_ "embed"
+	"io/ioutil"
+	"os"
 	"testing"
-
-	"github.com/LosAngeles971/kirinuki/business/kirinuki"
-	"github.com/LosAngeles971/kirinuki/business/multistorage"
-	"github.com/stretchr/testify/require"
 )
 
-func TestTOC(t *testing.T) {
-	tsm := multistorage.NewTestLocalMultistorage("toc")
-	toc, err :=	New(tsm.GetMultiStorage())
-	require.Nil(t, err)
-	k := kirinuki.NewFile("test", kirinuki.WithRandomkey())
-	ok := toc.Add(k)
-	require.True(t, ok)
-	err = toc.Store(multistorage.Test_email, multistorage.Test_password)
-	require.Nil(t, err)
-	toc.Files = nil
-	err = toc.Load(multistorage.Test_email, multistorage.Test_password)
-	require.Nil(t, err)
-	require.True(t, toc.Exist("test"))
-	tsm.Clean()
+func TestHashOfStream(t *testing.T) {
+	hFile := GetRndBytes(100000)
+	h1 := GetHash(hFile)
+	r := bytes.NewReader(hFile)
+	hr := NewStreamHash(r)
+	data, err := ioutil.ReadAll(hr.GetReader())
+	if err != nil {
+		t.Fatal(err)
+	}
+	tFile := os.TempDir() + "/teefile.png"
+	err = ioutil.WriteFile(tFile, data, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := GetFileHash(tFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h1 != h2 {
+		t.Fatalf("mimatch %s %s", h1, h2)
+	}
 }
