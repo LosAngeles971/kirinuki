@@ -4,6 +4,14 @@ image::.resources/kirinuki.png[]
 
 Kirinuki is a Golang library for storing small files over a plurality of storage targets, which aims to keep the content of files secret and realiable. Kirinuki provides a CLI too.
 
+[source,text]
+----
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+----
+
 == Storage management
 
 Kirinuki supports three kind of storage by means of the STOW project: local filesystem, S3 and SFTP.

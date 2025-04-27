@@ -19,7 +19,6 @@ package mosaic
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"time"
@@ -86,7 +85,7 @@ func newFile(name string, targets []string, opts ...FileOption) *File {
 	return k
 }
 
-// splitting of external file into chunks
+// Split: the func splits the file into chunks
 func (file *File) Split(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -109,7 +108,7 @@ func (file *File) Split(filename string) error {
 		if err != nil || n != int(chunk_size) {
 			return err
 		}
-		err = ioutil.WriteFile(c.GetFilename(), buf, 0755)
+		err = os.WriteFile(c.GetFilename(), buf, 0755)
 		if err != nil {
 			return err
 		}
@@ -117,7 +116,7 @@ func (file *File) Split(filename string) error {
 	return nil
 }
 
-// merging external chunks into external file
+// Merge: the func merges a set of chunks into a coherent file
 func (file *File) Merge(filename string) error {
 	log.Debugf("merging #chunks %v to file %s [%s]...", len(file.Chunks), file.Name, filename)
 	f, err := os.Create(filename)
@@ -142,6 +141,21 @@ func (file *File) Merge(filename string) error {
 	}
 	log.Debugf("merging #chunks %v to file %s [%s] completed", len(file.Chunks), file.Name, filename)
 	return nil
+}
+
+// assigning storage targets to every chunk of the file
+func (f *File) setCrushMap(targets []string) {
+	log.Debugf("setting crush map for file %s ...", f.Name)
+	f.Chunks = []*mosaic.Chunk{}
+	// create a chunk for every available storage
+	for i := 0; i < len(targets); i++ {
+		name := storage.GetFilename(nameSize)
+		c := mosaic.NewChunk(i, name, mosaic.WithFilename(storage.GetTmp()+"/"+name))
+		c.TargetNames = targets
+		f.Chunks = append(f.Chunks, c)
+		log.Debugf("crush map for file %s chunks %v [%s] - size %v - #targets %v", f.Name, c.Index, c.Name, c.Real_size, len(c.TargetNames))
+	}
+	log.Debugf("crush map for file %s #chunks %v", f.Name, len(f.Chunks))
 }
 
 // uploading an external file to the storage
